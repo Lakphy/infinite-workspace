@@ -32,6 +32,7 @@ export class Canvas {
   public readonly viewport: HTMLDivElement;
   public readonly layer: HTMLDivElement;
   private readonly gridCanvas: HTMLCanvasElement;
+  public showGrid: boolean = true;
 
   private static readonly MIN_SCALE = 0.05;
   private static readonly MAX_SCALE = 8;
@@ -341,9 +342,12 @@ export class Canvas {
 
     const w = this.gridCanvas.width;
     const h = this.gridCanvas.height;
-    const dpr = devicePixelRatio;
 
     ctx.clearRect(0, 0, w, h);
+
+    if (!this.showGrid) return;
+
+    const dpr = devicePixelRatio;
 
     // Determine grid spacing that looks good at current zoom
     const baseSpacing = 40;

@@ -33,18 +33,25 @@ import {
   ChevronDown,
   Plus,
   X,
+  Settings,
 } from "lucide-react";
 
+export interface FavoriteItem {
+  value: string;
+  width?: number;
+  height?: number;
+}
+
 export interface Favorites {
-  terminalCommands: string[];
-  browserUrls: string[];
-  fileExplorerPaths: string[];
+  terminalCommands: FavoriteItem[];
+  browserUrls: FavoriteItem[];
+  fileExplorerPaths: FavoriteItem[];
 }
 
 interface ToolbarProps {
-  onNewTerminal: (command?: string) => void;
-  onNewBrowser: (url?: string) => void;
-  onNewFileExplorer: (path?: string) => void;
+  onNewTerminal: (command?: string, width?: number, height?: number) => void;
+  onNewBrowser: (url?: string, width?: number, height?: number) => void;
+  onNewFileExplorer: (path?: string, width?: number, height?: number) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFitAll: () => void;
@@ -52,6 +59,7 @@ interface ToolbarProps {
   zoomPercent: number;
   favorites: Favorites;
   onUpdateFavorites: (favorites: Favorites) => void;
+  onOpenSettings: () => void;
 }
 
 export function Toolbar({
@@ -65,6 +73,7 @@ export function Toolbar({
   zoomPercent,
   favorites,
   onUpdateFavorites,
+  onOpenSettings,
 }: ToolbarProps) {
   const [addDialog, setAddDialog] = useState<"terminal" | "browser" | "fileExplorer" | null>(
     null
@@ -74,20 +83,21 @@ export function Toolbar({
   const handleAdd = () => {
     const val = addValue.trim();
     if (!val || !addDialog) return;
+    const item: FavoriteItem = { value: val };
     if (addDialog === "terminal") {
       onUpdateFavorites({
         ...favorites,
-        terminalCommands: [...favorites.terminalCommands, val],
+        terminalCommands: [...favorites.terminalCommands, item],
       });
     } else if (addDialog === "browser") {
       onUpdateFavorites({
         ...favorites,
-        browserUrls: [...favorites.browserUrls, val],
+        browserUrls: [...favorites.browserUrls, item],
       });
     } else {
       onUpdateFavorites({
         ...favorites,
-        fileExplorerPaths: [...favorites.fileExplorerPaths, val],
+        fileExplorerPaths: [...favorites.fileExplorerPaths, item],
       });
     }
     setAddValue("");
@@ -156,13 +166,13 @@ export function Toolbar({
               {favorites.terminalCommands.length > 0 && (
                 <DropdownMenuSeparator />
               )}
-              {favorites.terminalCommands.map((cmd, index) => (
+              {favorites.terminalCommands.map((item, index) => (
                 <DropdownMenuItem
                   key={index}
                   className="justify-between gap-4"
-                  onSelect={() => onNewTerminal(cmd)}
+                  onSelect={() => onNewTerminal(item.value, item.width, item.height)}
                 >
-                  <span className="truncate font-mono text-xs">{cmd}</span>
+                  <span className="truncate font-mono text-xs">{item.value}</span>
                   <span
                     role="button"
                     className="shrink-0 text-muted-foreground/50 hover:text-destructive transition-colors"
@@ -226,13 +236,13 @@ export function Toolbar({
                 Empty Browser
               </DropdownMenuItem>
               {favorites.browserUrls.length > 0 && <DropdownMenuSeparator />}
-              {favorites.browserUrls.map((url, index) => (
+              {favorites.browserUrls.map((item, index) => (
                 <DropdownMenuItem
                   key={index}
                   className="justify-between gap-4"
-                  onSelect={() => onNewBrowser(url)}
+                  onSelect={() => onNewBrowser(item.value, item.width, item.height)}
                 >
-                  <span className="truncate text-xs">{url}</span>
+                  <span className="truncate text-xs">{item.value}</span>
                   <span
                     role="button"
                     className="shrink-0 text-muted-foreground/50 hover:text-destructive transition-colors"
@@ -296,13 +306,13 @@ export function Toolbar({
                 Workspace Root
               </DropdownMenuItem>
               {favorites.fileExplorerPaths.length > 0 && <DropdownMenuSeparator />}
-              {favorites.fileExplorerPaths.map((p, index) => (
+              {favorites.fileExplorerPaths.map((item, index) => (
                 <DropdownMenuItem
                   key={index}
                   className="justify-between gap-4"
-                  onSelect={() => onNewFileExplorer(p)}
+                  onSelect={() => onNewFileExplorer(item.value, item.width, item.height)}
                 >
-                  <span className="truncate text-xs">{p}</span>
+                  <span className="truncate text-xs">{item.value}</span>
                   <span
                     role="button"
                     className="shrink-0 text-muted-foreground/50 hover:text-destructive transition-colors"
@@ -412,6 +422,24 @@ export function Toolbar({
           </TooltipTrigger>
           <TooltipContent side="bottom" sideOffset={8}>
             <p>Reset View</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Separator orientation="vertical" className="mx-1 h-4" />
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={onOpenSettings}
+              className="rounded-lg"
+            >
+              <Settings className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={8}>
+            <p>Settings</p>
           </TooltipContent>
         </Tooltip>
       </div>

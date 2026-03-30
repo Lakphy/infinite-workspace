@@ -1,21 +1,52 @@
 {
   "name": "infinite-workspace",
   "displayName": "Infinite Workspace",
-  "description": "An infinite canvas workspace with draggable terminal and browser windows",
+  "description": "An infinite canvas workspace with draggable terminal, browser, and file explorer windows — supports VS Code Desktop & Web",
   "version": "0.0.1",
+  "publisher": "lakphy",
+  "license": "MIT",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lakphy/infinite-workspace"
+  },
+  "homepage": "https://github.com/Lakphy/infinite-workspace#readme",
+  "bugs": {
+    "url": "https://github.com/Lakphy/infinite-workspace/issues"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
+    "Visualization",
     "Other"
   ],
+  "keywords": [
+    "infinite canvas",
+    "workspace",
+    "terminal",
+    "browser",
+    "multi-window",
+    "productivity",
+    "codespace"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Terminal and file system features are disabled in untrusted workspaces."
+    }
+  },
   "main": "./out/extension.js",
   "activationEvents": [],
   "contributes": {
     "commands": [
       {
         "command": "infinite-workspace.open",
-        "title": "Open Infinite Workspace"
+        "title": "Open Infinite Workspace",
+        "category": "Infinite Workspace"
       }
     ]
   },

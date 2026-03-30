@@ -69,6 +69,8 @@ const WINDOW_DEFAULTS: Record<WindowType, { width: number; height: number }> = {
   fileExplorer: { width: 700, height: 480 },
 };
 
+export type WindowDefaults = Record<WindowType, { width: number; height: number }>;
+
 export class WindowManager {
   private windows = new Map<string, WindowInstance>();
   private topZIndex = 1;
@@ -76,11 +78,24 @@ export class WindowManager {
   private canvas: Canvas;
   private vscode: VsCodeApi;
   private snapEngine: SnapEngine;
+  private windowDefaults: WindowDefaults = { ...WINDOW_DEFAULTS };
 
   constructor(canvas: Canvas, vscode: VsCodeApi) {
     this.canvas = canvas;
     this.vscode = vscode;
     this.snapEngine = new SnapEngine(canvas.viewport);
+  }
+
+  getSnapEngine(): SnapEngine {
+    return this.snapEngine;
+  }
+
+  setWindowDefaults(defaults: Partial<WindowDefaults>) {
+    for (const key of Object.keys(defaults) as WindowType[]) {
+      if (defaults[key]) {
+        this.windowDefaults[key] = { ...this.windowDefaults[key], ...defaults[key] };
+      }
+    }
   }
 
   // --- Focus management ---
@@ -184,7 +199,7 @@ export class WindowManager {
     width?: number,
     height?: number
   ): WindowInstance {
-    const defaults = WINDOW_DEFAULTS[type];
+    const defaults = this.windowDefaults[type];
     const w = width ?? defaults.width;
     const h = height ?? defaults.height;
     const windowId = id || generateId();
@@ -308,9 +323,11 @@ export class WindowManager {
     id?: string,
     x?: number,
     y?: number,
-    initialCommand?: string
+    initialCommand?: string,
+    width?: number,
+    height?: number
   ): string {
-    const win = this.createWindowElement("terminal", id, x, y);
+    const win = this.createWindowElement("terminal", id, x, y, width, height);
     const contentEl = win.element.querySelector(
       ".window-content"
     ) as HTMLDivElement;
@@ -344,9 +361,11 @@ export class WindowManager {
     id?: string,
     x?: number,
     y?: number,
-    url?: string
+    url?: string,
+    width?: number,
+    height?: number
   ): string {
-    const win = this.createWindowElement("browser", id, x, y);
+    const win = this.createWindowElement("browser", id, x, y, width, height);
     const contentEl = win.element.querySelector(
       ".window-content"
     ) as HTMLDivElement;
@@ -362,9 +381,11 @@ export class WindowManager {
     id?: string,
     x?: number,
     y?: number,
-    initialPath?: string
+    initialPath?: string,
+    width?: number,
+    height?: number
   ): string {
-    const win = this.createWindowElement("fileExplorer", id, x, y);
+    const win = this.createWindowElement("fileExplorer", id, x, y, width, height);
     const contentEl = win.element.querySelector(
       ".window-content"
     ) as HTMLDivElement;

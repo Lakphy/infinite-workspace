@@ -6,11 +6,13 @@
 export class SnapEngine {
   private viewport: HTMLElement;
   private guides: HTMLDivElement[] = [];
-  private readonly threshold: number; // in screen pixels
+  public threshold: number; // in screen pixels
+  public enabled: boolean;
 
   constructor(viewport: HTMLElement, threshold = 8) {
     this.viewport = viewport;
     this.threshold = threshold;
+    this.enabled = true;
   }
 
   /**
@@ -28,6 +30,12 @@ export class SnapEngine {
     scale: number,
     translate: { x: number; y: number }
   ): { x: number; y: number } {
+    // When disabled, return position as-is and clear any leftover guides
+    if (!this.enabled) {
+      this.clearGuides();
+      return { x, y };
+    }
+
     // Convert screen-pixel threshold to canvas-space
     const thresh = this.threshold / scale;
 

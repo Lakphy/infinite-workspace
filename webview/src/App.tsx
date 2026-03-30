@@ -2,7 +2,12 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { Canvas } from "@/lib/canvas";
 import { getVsCodeApi } from "@/lib/vscode";
 import { WindowManager, type WindowState } from "@/lib/WindowManager";
-import { Toolbar, type Favorites } from "@/components/Toolbar";
+import { Toolbar, type Favorites, type FavoriteItem } from "@/components/Toolbar";
+import {
+  SettingsDialog,
+  type AppSettings,
+  DEFAULT_SETTINGS,
+} from "@/components/SettingsDialog";
 import { TerminalSquare, Globe, FolderOpen } from "lucide-react";
 import {
   ContextMenu,
@@ -30,12 +35,34 @@ export function App() {
     browserUrls: [],
     fileExplorerPaths: [],
   });
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const updateFavorites = useCallback(
     (newFavorites: Favorites) => {
       setFavorites(newFavorites);
       const prev = vscode.getState() as Record<string, unknown> | null;
       vscode.setState({ ...prev, favorites: newFavorites });
+    },
+    [vscode]
+  );
+
+  const updateSettings = useCallback(
+    (newSettings: AppSettings) => {
+      setSettings(newSettings);
+      const prev = vscode.getState() as Record<string, unknown> | null;
+      vscode.setState({ ...prev, settings: newSettings });
+
+      // Apply to canvas and snap engine
+      if (canvasRef.current) {
+        canvasRef.current.showGrid = newSettings.showGrid;
+      }
+      if (managerRef.current) {
+        const snap = managerRef.current.getSnapEngine();
+        snap.enabled = newSettings.enableSnap;
+        snap.threshold = newSettings.snapThreshold;
+        managerRef.current.setWindowDefaults(newSettings.defaultSizes);
+      }
     },
     [vscode]
   );
@@ -75,9 +102,31 @@ export function App() {
     const savedState = vscode.getState() as {
       windows?: WindowState[];
       favorites?: Favorites;
+      settings?: AppSettings;
     } | null;
     if (savedState?.favorites) {
-      setFavorites({ fileExplorerPaths: [], ...savedState.favorites });
+      const f = savedState.favorites;
+      // Backward compat: old format was string[], new format is FavoriteItem[]
+      const migrate = (arr: unknown[] | undefined): FavoriteItem[] =>
+        (arr ?? []).map((v) =>
+          typeof v === "string" ? { value: v } : (v as FavoriteItem)
+        );
+      setFavorites({
+        terminalCommands: migrate(f.terminalCommands),
+        browserUrls: migrate(f.browserUrls),
+        fileExplorerPaths: migrate(f.fileExplorerPaths),
+      });
+    }
+    if (savedState?.settings) {
+      const s = { ...DEFAULT_SETTINGS, ...savedState.settings };
+      setSettings(s);
+      canvas.showGrid = s.showGrid;
+      const snap = manager.getSnapEngine();
+      snap.enabled = s.enableSnap;
+      snap.threshold = s.snapThreshold;
+      if (s.defaultSizes) {
+        manager.setWindowDefaults(s.defaultSizes);
+      }
     }
     if (savedState?.windows) {
       manager.restoreState(savedState.windows);
@@ -115,14 +164,14 @@ export function App() {
       <ContextMenuTrigger asChild onContextMenu={handleContextMenu}>
         <div ref={rootRef} className="w-full h-full overflow-hidden relative">
           <Toolbar
-            onNewTerminal={(cmd) =>
-              managerRef.current?.createTerminalWindow(undefined, undefined, undefined, cmd)
+            onNewTerminal={(cmd, w, h) =>
+              managerRef.current?.createTerminalWindow(undefined, undefined, undefined, cmd, w, h)
             }
-            onNewBrowser={(url) =>
-              managerRef.current?.createBrowserWindow(undefined, undefined, undefined, url)
+            onNewBrowser={(url, w, h) =>
+              managerRef.current?.createBrowserWindow(undefined, undefined, undefined, url, w, h)
             }
-            onNewFileExplorer={(path) =>
-              managerRef.current?.createFileExplorerWindow(undefined, undefined, undefined, path)
+            onNewFileExplorer={(path, w, h) =>
+              managerRef.current?.createFileExplorerWindow(undefined, undefined, undefined, path, w, h)
             }
             onZoomIn={() =>
               canvasRef.current?.zoomTo(canvasRef.current.getScale() * 1.3)
@@ -137,6 +186,7 @@ export function App() {
             zoomPercent={zoomPercent}
             favorites={favorites}
             onUpdateFavorites={updateFavorites}
+            onOpenSettings={() => setSettingsOpen(true)}
           />
         </div>
       </ContextMenuTrigger>
@@ -156,15 +206,15 @@ export function App() {
               Empty Terminal
             </ContextMenuItem>
             {favorites.terminalCommands.length > 0 && <ContextMenuSeparator />}
-            {favorites.terminalCommands.map((cmd, i) => (
+            {favorites.terminalCommands.map((item, i) => (
               <ContextMenuItem
                 key={i}
                 onClick={() => {
                   const { canvasX, canvasY } = ctxPos();
-                  managerRef.current?.createTerminalWindow(undefined, canvasX, canvasY, cmd);
+                  managerRef.current?.createTerminalWindow(undefined, canvasX, canvasY, item.value, item.width, item.height);
                 }}
               >
-                <span className="truncate font-mono text-xs">{cmd}</span>
+                <span className="truncate font-mono text-xs">{item.value}</span>
               </ContextMenuItem>
             ))}
           </ContextMenuSubContent>
@@ -184,15 +234,15 @@ export function App() {
               Empty Browser
             </ContextMenuItem>
             {favorites.browserUrls.length > 0 && <ContextMenuSeparator />}
-            {favorites.browserUrls.map((url, i) => (
+            {favorites.browserUrls.map((item, i) => (
               <ContextMenuItem
                 key={i}
                 onClick={() => {
                   const { canvasX, canvasY } = ctxPos();
-                  managerRef.current?.createBrowserWindow(undefined, canvasX, canvasY, url);
+                  managerRef.current?.createBrowserWindow(undefined, canvasX, canvasY, item.value, item.width, item.height);
                 }}
               >
-                <span className="truncate text-xs">{url}</span>
+                <span className="truncate text-xs">{item.value}</span>
               </ContextMenuItem>
             ))}
           </ContextMenuSubContent>
@@ -212,20 +262,29 @@ export function App() {
               Workspace Root
             </ContextMenuItem>
             {favorites.fileExplorerPaths.length > 0 && <ContextMenuSeparator />}
-            {favorites.fileExplorerPaths.map((p, i) => (
+            {favorites.fileExplorerPaths.map((item, i) => (
               <ContextMenuItem
                 key={i}
                 onClick={() => {
                   const { canvasX, canvasY } = ctxPos();
-                  managerRef.current?.createFileExplorerWindow(undefined, canvasX, canvasY, p);
+                  managerRef.current?.createFileExplorerWindow(undefined, canvasX, canvasY, item.value, item.width, item.height);
                 }}
               >
-                <span className="truncate text-xs">{p}</span>
+                <span className="truncate text-xs">{item.value}</span>
               </ContextMenuItem>
             ))}
           </ContextMenuSubContent>
         </ContextMenuSub>
       </ContextMenuContent>
+
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        settings={settings}
+        onUpdateSettings={updateSettings}
+        favorites={favorites}
+        onUpdateFavorites={updateFavorites}
+      />
     </ContextMenu>
   );
 }
