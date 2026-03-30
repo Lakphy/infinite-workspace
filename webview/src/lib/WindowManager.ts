@@ -40,7 +40,7 @@ export interface WindowState {
   y: number;
   width: number;
   height: number;
-  extra?: { url?: string; path?: string };
+  extra?: { url?: string; path?: string; zoom?: number };
 }
 
 let idCounter = 0;
@@ -73,6 +73,7 @@ export type WindowDefaults = Record<WindowType, { width: number; height: number 
 
 export class WindowManager {
   private windows = new Map<string, WindowInstance>();
+  private browserWindows = new Map<string, BrowserWindow>();
   private topZIndex = 1;
   private focusedWindowId: string | null = null;
   private canvas: Canvas;
@@ -127,14 +128,21 @@ export class WindowManager {
   saveState() {
     const states: WindowState[] = [];
     for (const [, win] of this.windows) {
-      states.push({
+      const state: WindowState = {
         id: win.id,
         type: win.type,
         x: win.x,
         y: win.y,
         width: win.width,
         height: win.height,
-      });
+      };
+      if (win.type === "browser") {
+        const bw = this.browserWindows.get(win.id);
+        if (bw) {
+          state.extra = { url: bw.getUrl(), zoom: bw.getZoom() };
+        }
+      }
+      states.push(state);
     }
     const prev = this.vscode.getState() as Record<string, unknown> | null;
     this.vscode.setState({ ...prev, windows: states });
@@ -147,7 +155,7 @@ export class WindowManager {
           this.createTerminalWindow(s.id, s.x, s.y);
           break;
         case "browser":
-          this.createBrowserWindow(s.id, s.x, s.y, s.extra?.url);
+          this.createBrowserWindow(s.id, s.x, s.y, s.extra?.url, undefined, undefined, s.extra?.zoom);
           break;
         case "fileExplorer":
           this.createFileExplorerWindow(s.id, s.x, s.y, s.extra?.path);
@@ -363,15 +371,20 @@ export class WindowManager {
     y?: number,
     url?: string,
     width?: number,
-    height?: number
+    height?: number,
+    zoom?: number
   ): string {
     const win = this.createWindowElement("browser", id, x, y, width, height);
     const contentEl = win.element.querySelector(
       ".window-content"
     ) as HTMLDivElement;
 
-    const browserWindow = new BrowserWindow(contentEl, win.id, url);
-    win.onDestroy = () => browserWindow.destroy();
+    const browserWindow = new BrowserWindow(contentEl, win.id, url, zoom);
+    this.browserWindows.set(win.id, browserWindow);
+    win.onDestroy = () => {
+      browserWindow.destroy();
+      this.browserWindows.delete(win.id);
+    };
 
     this.saveState();
     return win.id;

@@ -20,6 +20,12 @@ export function activate(context: vscode.ExtensionContext) {
       CanvasPanel.restore(panel, context);
     },
   });
+
+  // Auto-open if configured as startup editor
+  const config = vscode.workspace.getConfiguration("infinite-workspace");
+  if (config.get<boolean>("openOnStartup")) {
+    CanvasPanel.createOrShow(context);
+  }
 }
 
 export function deactivate() {

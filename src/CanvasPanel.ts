@@ -113,6 +113,8 @@ export class CanvasPanel {
     rows?: number;
     dirPath?: string;
     filePath?: string;
+    key?: string;
+    value?: unknown;
   }) {
     switch (msg.type) {
       case "createTerminal":
@@ -173,6 +175,22 @@ export class CanvasPanel {
             type: "workspacePath",
             windowId: msg.windowId,
             data: workspacePath,
+          });
+        }
+        break;
+      case "updateExtensionSetting":
+        if (msg.key !== undefined) {
+          const config = vscode.workspace.getConfiguration("infinite-workspace");
+          config.update(msg.key, msg.value, vscode.ConfigurationTarget.Global);
+        }
+        break;
+      case "getExtensionSetting":
+        if (msg.key !== undefined) {
+          const cfg = vscode.workspace.getConfiguration("infinite-workspace");
+          this.panel.webview.postMessage({
+            type: "extensionSetting",
+            key: msg.key,
+            value: cfg.get(msg.key),
           });
         }
         break;

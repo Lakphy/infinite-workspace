@@ -274,11 +274,20 @@ html, body, #root {
   scrollbar-color: oklch(0.35 0 0) transparent;
 }
 
+/* Browser zoom container */
+.browser-zoom-container {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  min-height: 0;
+}
+
 /* Browser iframe */
 .browser-frame {
-  flex: 1;
   border: none;
   width: 100%;
+  height: 100%;
+  display: block;
   background: oklch(0 0 0);
   color-scheme: dark;
 }

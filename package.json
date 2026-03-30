@@ -40,7 +40,9 @@
     }
   },
   "main": "./out/extension.js",
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "commands": [
       {
@@ -48,7 +50,17 @@
         "title": "Open Infinite Workspace",
         "category": "Infinite Workspace"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Infinite Workspace",
+      "properties": {
+        "infinite-workspace.openOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically open Infinite Workspace when VS Code starts."
+        }
+      }
+    }
   },
   "scripts": {
     "build": "npm run build:ext && npm run build:webview",

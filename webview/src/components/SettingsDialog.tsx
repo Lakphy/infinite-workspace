@@ -25,6 +25,7 @@ import {
   Maximize2,
   ChevronDown,
   ChevronRight,
+  Home,
 } from "lucide-react";
 import type { Favorites, FavoriteItem } from "./Toolbar";
 
@@ -62,6 +63,8 @@ interface SettingsDialogProps {
   onUpdateSettings: (settings: AppSettings) => void;
   favorites: Favorites;
   onUpdateFavorites: (favorites: Favorites) => void;
+  openOnStartup: boolean;
+  onUpdateOpenOnStartup: (value: boolean) => void;
 }
 
 export function SettingsDialog({
@@ -71,6 +74,8 @@ export function SettingsDialog({
   onUpdateSettings,
   favorites,
   onUpdateFavorites,
+  openOnStartup,
+  onUpdateOpenOnStartup,
 }: SettingsDialogProps) {
   const [addType, setAddType] = useState<
     "terminal" | "browser" | "fileExplorer" | null
@@ -270,6 +275,35 @@ export function SettingsDialog({
                   updateDefaultSize("fileExplorer", dim, val)
                 }
               />
+            </div>
+
+            <Separator />
+
+            {/* Startup */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Startup
+              </h4>
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="open-on-startup"
+                  className="flex items-center gap-2 text-sm font-normal cursor-pointer"
+                >
+                  <Home className="size-3.5 text-muted-foreground" />
+                  Set as VS Code homepage
+                </Label>
+                <Switch
+                  id="open-on-startup"
+                  size="sm"
+                  checked={openOnStartup}
+                  onCheckedChange={(v) =>
+                    onUpdateOpenOnStartup(v === true)
+                  }
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground/60 pl-6">
+                Automatically open Infinite Workspace when VS Code starts.
+              </p>
             </div>
           </TabsContent>
 

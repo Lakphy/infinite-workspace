@@ -37,6 +37,7 @@ export function App() {
   });
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [openOnStartup, setOpenOnStartup] = useState(false);
 
   const updateFavorites = useCallback(
     (newFavorites: Favorites) => {
@@ -63,6 +64,18 @@ export function App() {
         snap.threshold = newSettings.snapThreshold;
         managerRef.current.setWindowDefaults(newSettings.defaultSizes);
       }
+    },
+    [vscode]
+  );
+
+  const updateOpenOnStartup = useCallback(
+    (value: boolean) => {
+      setOpenOnStartup(value);
+      vscode.postMessage({
+        type: "updateExtensionSetting",
+        key: "openOnStartup",
+        value,
+      });
     },
     [vscode]
   );
@@ -94,9 +107,17 @@ export function App() {
 
     // Listen for extension messages
     const handler = (event: MessageEvent) => {
-      manager.handleMessage(event.data);
+      const data = event.data;
+      if (data.type === "extensionSetting" && data.key === "openOnStartup") {
+        setOpenOnStartup(!!data.value);
+      } else {
+        manager.handleMessage(data);
+      }
     };
     window.addEventListener("message", handler);
+
+    // Request current openOnStartup setting from extension
+    vscode.postMessage({ type: "getExtensionSetting", key: "openOnStartup" });
 
     // Restore state
     const savedState = vscode.getState() as {
@@ -284,6 +305,8 @@ export function App() {
         onUpdateSettings={updateSettings}
         favorites={favorites}
         onUpdateFavorites={updateFavorites}
+        openOnStartup={openOnStartup}
+        onUpdateOpenOnStartup={updateOpenOnStartup}
       />
     </ContextMenu>
   );
