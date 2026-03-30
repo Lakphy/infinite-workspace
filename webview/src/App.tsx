@@ -4,6 +4,7 @@ import { getVsCodeApi } from "@/lib/vscode";
 import { TerminalWindow } from "@/lib/TerminalWindow";
 import { BrowserWindow } from "@/lib/BrowserWindow";
 import { Toolbar } from "@/components/Toolbar";
+import { TerminalSquare, Globe } from "lucide-react";
 
 interface WindowInstance {
   id: string;
@@ -42,6 +43,9 @@ export function App() {
   const focusedWindowIdRef = useRef<string | null>(null);
   const vscode = getVsCodeApi();
   const [zoomPercent, setZoomPercent] = useState(100);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number; y: number; canvasX: number; canvasY: number;
+  } | null>(null);
 
   const saveState = useCallback(() => {
     const states: WindowState[] = [];
@@ -267,6 +271,15 @@ export function App() {
       unfocusAll();
     });
 
+    // Right-click on canvas to show context menu
+    canvas.viewport.addEventListener("contextmenu", (e) => {
+      // Don't override right-click inside focused windows
+      if ((e.target as HTMLElement).closest(".window-focused")) return;
+      e.preventDefault();
+      const pos = canvas.screenToCanvas(e.clientX, e.clientY);
+      setContextMenu({ x: e.clientX, y: e.clientY, canvasX: pos.x, canvasY: pos.y });
+    });
+
     // Listen for extension messages
     const handler = (event: MessageEvent) => {
       const msg = event.data;
@@ -310,6 +323,26 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Close context menu on outside click, Escape, or scroll
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    const onPointerDown = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement).closest(".canvas-context-menu")) close();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("wheel", close, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("wheel", close);
+    };
+  }, [contextMenu]);
+
   return (
     <div ref={rootRef} className="w-full h-full overflow-hidden relative">
       <Toolbar
@@ -321,6 +354,33 @@ export function App() {
         onResetView={() => canvasRef.current?.resetView()}
         zoomPercent={zoomPercent}
       />
+      {contextMenu && (
+        <div
+          className="canvas-context-menu fixed z-[10001] min-w-[180px] py-1 bg-popover/80 backdrop-blur-xl border border-border/50 rounded-lg shadow-2xl"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-popover-foreground hover:bg-accent/80 transition-colors cursor-pointer border-none bg-transparent text-left"
+            onClick={() => {
+              createTerminalWindow(undefined, contextMenu.canvasX, contextMenu.canvasY);
+              setContextMenu(null);
+            }}
+          >
+            <TerminalSquare className="size-4 text-muted-foreground" />
+            New Terminal
+          </button>
+          <button
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-popover-foreground hover:bg-accent/80 transition-colors cursor-pointer border-none bg-transparent text-left"
+            onClick={() => {
+              createBrowserWindow(undefined, contextMenu.canvasX, contextMenu.canvasY);
+              setContextMenu(null);
+            }}
+          >
+            <Globe className="size-4 text-muted-foreground" />
+            New Browser
+          </button>
+        </div>
+      )}
     </div>
   );
 }
