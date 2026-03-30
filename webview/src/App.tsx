@@ -107,8 +107,8 @@ export function App() {
       id?: string,
       x?: number,
       y?: number,
-      width = type === "terminal" ? 700 : 800,
-      height = type === "terminal" ? 420 : 600
+      width = type === "terminal" ? 650 : 750,
+      height = type === "terminal" ? 380 : 520
     ): WindowInstance => {
       const canvas = canvasRef.current!;
       const windowId = id || generateId();
@@ -125,7 +125,7 @@ export function App() {
 
       const el = document.createElement("div");
       el.className =
-        "workspace-window window-enter rounded-xl border border-[oklch(1_0_0/8%)] bg-[oklch(0.16_0_0)] shadow-[0_8px_32px_oklch(0_0_0/45%),0_2px_8px_oklch(0_0_0/25%)]";
+        "workspace-window window-enter rounded-lg border border-[oklch(1_0_0/8%)] bg-[oklch(0.16_0_0)] shadow-[0_8px_32px_oklch(0_0_0/45%),0_2px_8px_oklch(0_0_0/25%)]";
       // Store logical canvas-space coordinates in data attributes
       el.dataset.canvasX = `${x}`;
       el.dataset.canvasY = `${y}`;
@@ -145,13 +145,13 @@ export function App() {
           : '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
 
       el.innerHTML = `
-        <div class="window-titlebar flex items-center justify-between px-3 py-[5px] bg-[oklch(0.20_0_0)] cursor-grab select-none shrink-0 border-b border-[oklch(1_0_0/5%)]" style="user-select:none;-webkit-user-select:none">
-          <div class="flex items-center gap-2">
+        <div class="window-titlebar flex items-center justify-between px-2 py-[3px] bg-[oklch(0.20_0_0)] cursor-grab select-none shrink-0 border-b border-[oklch(1_0_0/5%)]" style="user-select:none;-webkit-user-select:none">
+          <div class="flex items-center gap-1.5">
             <span class="text-[oklch(0.55_0_0)]">${iconSvg}</span>
-            <span class="text-[11px] font-medium text-[oklch(0.6_0_0)]">${label}</span>
+            <span class="text-[10px] font-medium text-[oklch(0.6_0_0)]">${label}</span>
           </div>
-          <button class="window-close inline-flex items-center justify-center size-[18px] rounded-full text-[oklch(0.5_0_0)] hover:bg-[oklch(0.65_0.25_25)] hover:text-white transition-all duration-150 cursor-pointer border-none bg-transparent">
-            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          <button class="window-close inline-flex items-center justify-center size-[16px] rounded-full text-[oklch(0.5_0_0)] hover:bg-[oklch(0.65_0.25_25)] hover:text-white transition-all duration-150 cursor-pointer border-none bg-transparent">
+            <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
           </button>
         </div>
         <div class="window-content flex-1 overflow-hidden relative flex flex-col"></div>

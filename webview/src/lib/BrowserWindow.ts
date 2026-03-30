@@ -10,10 +10,10 @@ export class BrowserWindow {
     // Create browser toolbar
     const toolbar = document.createElement("div");
     toolbar.className =
-      "flex items-center gap-1 px-2 py-1.5 bg-[oklch(0.18_0_0)] border-b border-[oklch(1_0_0/8%)] shrink-0";
+      "flex items-center gap-1 px-1.5 py-1 bg-[oklch(0.18_0_0)] border-b border-[oklch(1_0_0/8%)] shrink-0";
 
     const btnClass =
-      "inline-flex items-center justify-center size-6 rounded-md text-[oklch(0.65_0_0)] hover:text-[oklch(0.85_0_0)] hover:bg-[oklch(1_0_0/8%)] transition-colors text-xs cursor-pointer border-none bg-transparent";
+      "inline-flex items-center justify-center size-5 rounded text-[oklch(0.65_0_0)] hover:text-[oklch(0.85_0_0)] hover:bg-[oklch(1_0_0/8%)] transition-colors text-xs cursor-pointer border-none bg-transparent";
 
     const backBtn = document.createElement("button");
     backBtn.className = btnClass;
@@ -55,7 +55,7 @@ export class BrowserWindow {
     this.urlInput = document.createElement("input");
     this.urlInput.type = "text";
     this.urlInput.className =
-      "flex-1 h-6 px-2.5 rounded-md text-xs bg-[oklch(0.14_0_0)] text-[oklch(0.8_0_0)] border border-[oklch(1_0_0/10%)] outline-none placeholder:text-[oklch(0.45_0_0)] focus:border-[oklch(0.5_0.15_250)] transition-colors";
+      "flex-1 h-5 px-2 rounded text-[11px] bg-[oklch(0.14_0_0)] text-[oklch(0.8_0_0)] border border-[oklch(1_0_0/10%)] outline-none placeholder:text-[oklch(0.45_0_0)] focus:border-[oklch(0.5_0.15_250)] transition-colors";
     this.urlInput.placeholder = "Enter URL...";
 
     const goBtn = document.createElement("button");

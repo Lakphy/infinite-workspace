@@ -256,6 +256,15 @@ html, body, #root {
   height: 100%;
 }
 
+.terminal-container .xterm {
+  padding: 4px 2px 2px 4px;
+}
+
+.terminal-container .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.35 0 0) transparent;
+}
+
 /* Browser iframe */
 .browser-frame {
   flex: 1;

@@ -29,7 +29,9 @@ export class TerminalWindow {
 
     // Create xterm instance
     this.terminal = new Terminal({
-      fontSize: 13,
+      fontSize: 12,
+      lineHeight: 1.1,
+      letterSpacing: 0,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
       cursorBlink: true,
       cursorStyle: "block",
