@@ -3,12 +3,16 @@ import { Canvas } from "@/lib/canvas";
 import { getVsCodeApi } from "@/lib/vscode";
 import { TerminalWindow } from "@/lib/TerminalWindow";
 import { BrowserWindow } from "@/lib/BrowserWindow";
-import { Toolbar } from "@/components/Toolbar";
+import { Toolbar, type Favorites } from "@/components/Toolbar";
 import { TerminalSquare, Globe } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 
@@ -50,6 +54,7 @@ export function App() {
   const vscode = getVsCodeApi();
   const [zoomPercent, setZoomPercent] = useState(100);
   const contextMenuPosRef = useRef<{ canvasX: number; canvasY: number }>({ canvasX: 0, canvasY: 0 });
+  const [favorites, setFavorites] = useState<Favorites>({ terminalCommands: [], browserUrls: [] });
 
   const saveState = useCallback(() => {
     const states: WindowState[] = [];
@@ -63,7 +68,14 @@ export function App() {
         height: win.height,
       });
     }
-    vscode.setState({ windows: states });
+    const prev = vscode.getState() as Record<string, unknown> | null;
+    vscode.setState({ ...prev, windows: states });
+  }, [vscode]);
+
+  const updateFavorites = useCallback((newFavorites: Favorites) => {
+    setFavorites(newFavorites);
+    const prev = vscode.getState() as Record<string, unknown> | null;
+    vscode.setState({ ...prev, favorites: newFavorites });
   }, [vscode]);
 
   const focusWindow = useCallback((windowId: string) => {
@@ -114,11 +126,17 @@ export function App() {
       const el = document.createElement("div");
       el.className =
         "workspace-window window-enter rounded-xl border border-[oklch(1_0_0/8%)] bg-[oklch(0.16_0_0)] shadow-[0_8px_32px_oklch(0_0_0/45%),0_2px_8px_oklch(0_0_0/25%)]";
-      el.style.left = `${x}px`;
-      el.style.top = `${y}px`;
+      // Store logical canvas-space coordinates in data attributes
+      el.dataset.canvasX = `${x}`;
+      el.dataset.canvasY = `${y}`;
+      el.dataset.canvasW = `${width}`;
+      el.dataset.canvasH = `${height}`;
       el.style.width = `${width}px`;
       el.style.height = `${height}px`;
       el.style.zIndex = `${zIndex}`;
+      el.style.transformOrigin = "0 0";
+      // Apply initial position and scale
+      canvas.updateWindowTransform(el);
 
       const label = type === "terminal" ? "Terminal" : "Browser";
       const iconSvg =
@@ -202,10 +220,9 @@ export function App() {
       }
       win.onDestroy?.();
 
-      // Exit animation
-      win.element.style.transition = "opacity 0.15s ease, transform 0.15s ease";
+      // Exit animation — only fade opacity since transform is used for positioning
+      win.element.style.transition = "opacity 0.15s ease";
       win.element.style.opacity = "0";
-      win.element.style.transform = "scale(0.95)";
       setTimeout(() => {
         win.element.remove();
       }, 150);
@@ -217,16 +234,33 @@ export function App() {
   );
 
   const createTerminalWindow = useCallback(
-    (id?: string, x?: number, y?: number) => {
+    (id?: string, x?: number, y?: number, initialCommand?: string) => {
       const win = createWindowElement("terminal", id, x, y);
       const contentEl = win.element.querySelector(
         ".window-content"
       ) as HTMLDivElement;
 
       const termWindow = new TerminalWindow(contentEl, win.id, vscode);
-      win.onMessage = (msg) => termWindow.handleMessage(msg);
       win.onDestroy = () => termWindow.destroy();
       win.onResize = () => termWindow.fit();
+
+      // If an initial command is provided, send it once the shell is ready
+      if (initialCommand) {
+        let sent = false;
+        win.onMessage = (msg) => {
+          termWindow.handleMessage(msg);
+          if (!sent && msg.type === "ptyOutput") {
+            sent = true;
+            vscode.postMessage({
+              type: "ptyInput",
+              windowId: win.id,
+              data: initialCommand + "\r",
+            });
+          }
+        };
+      } else {
+        win.onMessage = (msg) => termWindow.handleMessage(msg);
+      }
 
       saveState();
       return win.id;
@@ -266,8 +300,15 @@ export function App() {
     canvasRef.current = canvas;
 
     // Track zoom changes
-    canvas.onChange(({ scale }) => {
+    canvas.onChange(({ scale }: { scale: number }) => {
       setZoomPercent(Math.round(scale * 100));
+    });
+
+    // When zoom settles, re-fit terminals for crisp rendering
+    const unsettle = canvas.onSettle(() => {
+      for (const [, win] of windowsRef.current) {
+        win.onResize?.();
+      }
     });
 
     // Click on canvas background unfocuses all windows
@@ -287,6 +328,7 @@ export function App() {
 
     return () => {
       window.removeEventListener("message", handler);
+      unsettle();
       canvas.destroy();
     };
   }, []);
@@ -297,7 +339,11 @@ export function App() {
 
     const savedState = vscode.getState() as {
       windows?: WindowState[];
+      favorites?: Favorites;
     } | null;
+    if (savedState?.favorites) {
+      setFavorites(savedState.favorites);
+    }
     if (savedState?.windows) {
       for (const s of savedState.windows) {
         if (s.type === "terminal") {
@@ -309,8 +355,11 @@ export function App() {
         if (win) {
           win.width = s.width;
           win.height = s.height;
+          win.element.dataset.canvasW = `${s.width}`;
+          win.element.dataset.canvasH = `${s.height}`;
           win.element.style.width = `${s.width}px`;
           win.element.style.height = `${s.height}px`;
+          canvasRef.current?.updateWindowTransform(win.element);
           win.onResize?.();
         }
       }
@@ -339,35 +388,75 @@ export function App() {
       <ContextMenuTrigger asChild onContextMenu={handleContextMenu}>
         <div ref={rootRef} className="w-full h-full overflow-hidden relative">
           <Toolbar
-            onNewTerminal={() => createTerminalWindow()}
-            onNewBrowser={() => createBrowserWindow()}
+            onNewTerminal={(cmd) => createTerminalWindow(undefined, undefined, undefined, cmd)}
+            onNewBrowser={(url) => createBrowserWindow(undefined, undefined, undefined, url)}
             onZoomIn={() => canvasRef.current?.zoomTo(canvasRef.current.getScale() * 1.3)}
             onZoomOut={() => canvasRef.current?.zoomTo(canvasRef.current.getScale() / 1.3)}
             onFitAll={() => canvasRef.current?.fitAll(getWindowRects())}
             onResetView={() => canvasRef.current?.resetView()}
             zoomPercent={zoomPercent}
+            favorites={favorites}
+            onUpdateFavorites={updateFavorites}
           />
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="min-w-[180px]">
-        <ContextMenuItem
-          onClick={() => {
-            const { canvasX, canvasY } = contextMenuPosRef.current;
-            createTerminalWindow(undefined, canvasX, canvasY);
-          }}
-        >
-          <TerminalSquare className="size-4" />
-          New Terminal
-        </ContextMenuItem>
-        <ContextMenuItem
-          onClick={() => {
-            const { canvasX, canvasY } = contextMenuPosRef.current;
-            createBrowserWindow(undefined, canvasX, canvasY);
-          }}
-        >
-          <Globe className="size-4" />
-          New Browser
-        </ContextMenuItem>
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <TerminalSquare className="size-4" />
+            New Terminal
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem
+              onClick={() => {
+                const { canvasX, canvasY } = contextMenuPosRef.current;
+                createTerminalWindow(undefined, canvasX, canvasY);
+              }}
+            >
+              Empty Terminal
+            </ContextMenuItem>
+            {favorites.terminalCommands.length > 0 && <ContextMenuSeparator />}
+            {favorites.terminalCommands.map((cmd, i) => (
+              <ContextMenuItem
+                key={i}
+                onClick={() => {
+                  const { canvasX, canvasY } = contextMenuPosRef.current;
+                  createTerminalWindow(undefined, canvasX, canvasY, cmd);
+                }}
+              >
+                <span className="truncate font-mono text-xs">{cmd}</span>
+              </ContextMenuItem>
+            ))}
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <Globe className="size-4" />
+            New Browser
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem
+              onClick={() => {
+                const { canvasX, canvasY } = contextMenuPosRef.current;
+                createBrowserWindow(undefined, canvasX, canvasY);
+              }}
+            >
+              Empty Browser
+            </ContextMenuItem>
+            {favorites.browserUrls.length > 0 && <ContextMenuSeparator />}
+            {favorites.browserUrls.map((url, i) => (
+              <ContextMenuItem
+                key={i}
+                onClick={() => {
+                  const { canvasX, canvasY } = contextMenuPosRef.current;
+                  createBrowserWindow(undefined, canvasX, canvasY, url);
+                }}
+              >
+                <span className="truncate text-xs">{url}</span>
+              </ContextMenuItem>
+            ))}
+          </ContextMenuSubContent>
+        </ContextMenuSub>
       </ContextMenuContent>
     </ContextMenu>
   );
@@ -404,8 +493,9 @@ function setupDrag(win: WindowInstance, canvas: Canvas, saveState: () => void) {
     const dy = (e.clientY - startY) / scale;
     win.x = startWinX + dx;
     win.y = startWinY + dy;
-    win.element.style.left = `${win.x}px`;
-    win.element.style.top = `${win.y}px`;
+    win.element.dataset.canvasX = `${win.x}`;
+    win.element.dataset.canvasY = `${win.y}`;
+    canvas.updateWindowTransform(win.element);
   };
 
   const onPointerUp = (e: PointerEvent) => {
@@ -450,8 +540,11 @@ function setupResize(
     const dy = (e.clientY - startY) / scale;
     win.width = Math.max(200, startW + dx);
     win.height = Math.max(150, startH + dy);
+    win.element.dataset.canvasW = `${win.width}`;
+    win.element.dataset.canvasH = `${win.height}`;
     win.element.style.width = `${win.width}px`;
     win.element.style.height = `${win.height}px`;
+    canvas.updateWindowTransform(win.element);
     win.onResize?.();
   };
 

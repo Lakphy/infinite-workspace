@@ -14,6 +14,16 @@ export class Canvas {
   private lastPointerY = 0;
   private animationId: number | null = null;
   private listeners: CanvasChangeListener[] = [];
+  private dprMediaQuery: MediaQueryList | null = null;
+
+  /**
+   * When true the zoom is animating and we use cheap CSS transform scale.
+   * When false (settled) we apply real CSS dimensions so content re-rasterizes
+   * crisply at the current zoom level.
+   */
+  private isAnimating = false;
+  private settleTimer: number | null = null;
+  private static readonly SETTLE_DELAY_MS = 100;
 
   public readonly viewport: HTMLDivElement;
   public readonly layer: HTMLDivElement;
@@ -47,13 +57,35 @@ export class Canvas {
 
     // Resize observer for grid canvas
     const ro = new ResizeObserver(() => {
-      this.gridCanvas.width = this.viewport.clientWidth * devicePixelRatio;
-      this.gridCanvas.height = this.viewport.clientHeight * devicePixelRatio;
-      this.gridCanvas.style.width = `${this.viewport.clientWidth}px`;
-      this.gridCanvas.style.height = `${this.viewport.clientHeight}px`;
+      this.syncGridCanvasSize();
       this.drawGrid();
     });
     ro.observe(this.viewport);
+
+    // Listen for DPR changes (e.g. moving window between monitors)
+    this.watchDpr();
+  }
+
+  /** Sync the grid canvas backing store to current viewport size × DPR */
+  private syncGridCanvasSize() {
+    const dpr = devicePixelRatio;
+    this.gridCanvas.width = this.viewport.clientWidth * dpr;
+    this.gridCanvas.height = this.viewport.clientHeight * dpr;
+    this.gridCanvas.style.width = `${this.viewport.clientWidth}px`;
+    this.gridCanvas.style.height = `${this.viewport.clientHeight}px`;
+  }
+
+  /** Watch for devicePixelRatio changes (multi-monitor, zoom) */
+  private watchDpr() {
+    const updateDpr = () => {
+      this.syncGridCanvasSize();
+      this.drawGrid();
+      this.settleWindows();
+      // Re-register since matchMedia is one-shot per DPR value
+      this.watchDpr();
+    };
+    this.dprMediaQuery = matchMedia(`(resolution: ${devicePixelRatio}dppx)`);
+    this.dprMediaQuery.addEventListener("change", updateDpr, { once: true });
   }
 
   onChange(listener: CanvasChangeListener) {
@@ -125,6 +157,8 @@ export class Canvas {
     this.targetTranslateX = this.translateX;
     this.targetTranslateY = this.translateY;
     this.applyTransform();
+    // No updateAllWindows() needed — windows are children of the layer,
+    // so the layer's translate moves them automatically.
     this.drawGrid();
     this.notify();
   }
@@ -158,6 +192,7 @@ export class Canvas {
       this.targetTranslateX = this.translateX;
       this.targetTranslateY = this.translateY;
       this.applyTransform();
+      // No updateAllWindows() — layer translate handles panning.
       this.drawGrid();
       this.notify();
       return;
@@ -195,6 +230,9 @@ export class Canvas {
       // Only update if there's meaningful difference
       if (ds < 0.0001 && dx < 0.01 && dy < 0.01) return;
 
+      const scaleChanging = ds >= 0.0001;
+      if (scaleChanging) this.isAnimating = true;
+
       this.scale += (this.targetScale - this.scale) * Canvas.LERP_FACTOR;
       this.translateX += (this.targetTranslateX - this.translateX) * Canvas.LERP_FACTOR;
       this.translateY += (this.targetTranslateY - this.translateY) * Canvas.LERP_FACTOR;
@@ -205,10 +243,89 @@ export class Canvas {
       if (dy < 0.01) this.translateY = this.targetTranslateY;
 
       this.applyTransform();
+      // Only update per-window transforms when scale is changing.
+      // For translate-only animation the layer's transform handles it.
+      if (scaleChanging) {
+        this.updateAllWindows();
+      }
       this.drawGrid();
       this.notify();
+
+      // Check if we've settled
+      const settled =
+        this.scale === this.targetScale &&
+        this.translateX === this.targetTranslateX &&
+        this.translateY === this.targetTranslateY;
+
+      if (settled && this.isAnimating) {
+        this.isAnimating = false;
+        // Schedule re-rasterization for crisp rendering
+        this.scheduleSettle();
+      }
     };
     this.animationId = requestAnimationFrame(animate);
+  }
+
+  /**
+   * Schedule a "settle" pass that re-rasterizes window content at current
+   * zoom level for maximum crispness.  Debounced so rapid zooms don't thrash.
+   */
+  private scheduleSettle() {
+    if (this.settleTimer !== null) clearTimeout(this.settleTimer);
+    this.settleTimer = window.setTimeout(() => {
+      this.settleTimer = null;
+      this.settleWindows();
+    }, Canvas.SETTLE_DELAY_MS);
+  }
+
+  /**
+   * "Settle" all windows: remove the CSS transform-based scale and instead
+   * apply real CSS dimensions so the browser re-rasterizes content at the
+   * current zoom level.  Terminal text, iframe content, etc. become pixel-
+   * perfect at the settled scale.
+   *
+   * Settled state uses translate-only (no scale) on the transform, with the
+   * element's width/height set to canvasW*scale × canvasH*scale. The browser
+   * then renders children (xterm canvas, iframe, etc.) at those real pixel
+   * dimensions, producing crisp output.
+   */
+  private settleWindows() {
+    const s = this.scale;
+    const children = this.layer.querySelectorAll(".workspace-window") as NodeListOf<HTMLDivElement>;
+    for (const el of children) {
+      const cx = el.dataset.canvasX;
+      const cy = el.dataset.canvasY;
+      const cw = el.dataset.canvasW;
+      const ch = el.dataset.canvasH;
+      if (!cx || !cy || !cw || !ch) continue;
+
+      const x = parseFloat(cx);
+      const y = parseFloat(cy);
+      const w = parseFloat(cw);
+      const h = parseFloat(ch);
+
+      // Position with translate only (no scale) — real dimensions absorb the zoom
+      el.style.transform = `translate(${x * s}px, ${y * s}px)`;
+      el.style.width = `${w * s}px`;
+      el.style.height = `${h * s}px`;
+    }
+
+    // Fire callbacks so terminals re-fit for the new pixel dimensions
+    this._fireResizeCallbacks();
+  }
+
+  private _resizeCallbacks: (() => void)[] = [];
+
+  /** Register a callback to be invoked when windows settle after zoom */
+  public onSettle(cb: () => void): () => void {
+    this._resizeCallbacks.push(cb);
+    return () => {
+      this._resizeCallbacks = this._resizeCallbacks.filter((c) => c !== cb);
+    };
+  }
+
+  private _fireResizeCallbacks() {
+    for (const cb of this._resizeCallbacks) cb();
   }
 
   private drawGrid() {
@@ -288,7 +405,54 @@ export class Canvas {
   }
 
   private applyTransform() {
-    this.layer.style.transform = `translate(${this.translateX}px, ${this.translateY}px) scale(${this.scale})`;
+    // The layer only translates — no scale.
+    // Scaling is handled per-window for crisp content rendering.
+    this.layer.style.transform = `translate(${this.translateX}px, ${this.translateY}px)`;
+  }
+
+  /**
+   * Fast path: position/scale all windows using CSS transform.
+   * During animation this gives smooth 60fps zoom.
+   * After settling, settleWindows() replaces this with real CSS dimensions.
+   */
+  public updateAllWindows() {
+    const s = this.scale;
+    const children = this.layer.querySelectorAll(".workspace-window") as NodeListOf<HTMLDivElement>;
+    for (const el of children) {
+      const cx = el.dataset.canvasX;
+      const cy = el.dataset.canvasY;
+      if (cx === undefined || cy === undefined) continue;
+      const x = parseFloat(cx);
+      const y = parseFloat(cy);
+      // Use transform scale during animation — fast but blurry
+      el.style.transform = `translate(${x * s}px, ${y * s}px) scale(${s})`;
+      // Reset to logical dimensions (transform scale handles visual size)
+      const cw = el.dataset.canvasW;
+      const ch = el.dataset.canvasH;
+      if (cw && ch) {
+        el.style.width = `${parseFloat(cw)}px`;
+        el.style.height = `${parseFloat(ch)}px`;
+      }
+    }
+  }
+
+  /**
+   * Update a single window's transform (called during drag for performance).
+   */
+  public updateWindowTransform(el: HTMLDivElement) {
+    const cx = el.dataset.canvasX;
+    const cy = el.dataset.canvasY;
+    if (cx === undefined || cy === undefined) return;
+    const x = parseFloat(cx);
+    const y = parseFloat(cy);
+    const s = this.scale;
+    el.style.transform = `translate(${x * s}px, ${y * s}px) scale(${s})`;
+    const cw = el.dataset.canvasW;
+    const ch = el.dataset.canvasH;
+    if (cw && ch) {
+      el.style.width = `${parseFloat(cw)}px`;
+      el.style.height = `${parseFloat(ch)}px`;
+    }
   }
 
   public getScale(): number {
@@ -369,5 +533,6 @@ export class Canvas {
 
   public destroy() {
     if (this.animationId) cancelAnimationFrame(this.animationId);
+    if (this.settleTimer !== null) clearTimeout(this.settleTimer);
   }
 }
