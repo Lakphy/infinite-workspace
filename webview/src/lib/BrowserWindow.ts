@@ -81,6 +81,9 @@ export class BrowserWindow {
     // Create iframe
     this.iframe = document.createElement("iframe");
     this.iframe.className = "browser-frame";
+    // Force dark mode: tell the browser to signal prefers-color-scheme: dark
+    // to content inside the iframe, so sites with dark mode support will use it
+    this.iframe.style.colorScheme = "dark";
     this.iframe.sandbox.add(
       "allow-scripts",
       "allow-same-origin",
