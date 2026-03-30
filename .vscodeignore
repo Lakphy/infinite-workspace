@@ -1,0 +1,13 @@
+.vscode/**
+src/**
+webview/**
+node_modules/**
+!node_modules/node-pty/**
+tsconfig.json
+tsconfig.webview.json
+vite.config.ts
+esbuild.js
+tailwind.config.js
+postcss.config.js
+components.json
+.gitignore

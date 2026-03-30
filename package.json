@@ -1,0 +1,73 @@
+{
+  "name": "infinite-workspace",
+  "displayName": "Infinite Workspace",
+  "description": "An infinite canvas workspace with draggable terminal and browser windows",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      {
+        "command": "infinite-workspace.open",
+        "title": "Open Infinite Workspace"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "npm run build:ext && npm run build:webview",
+    "build:ext": "node esbuild.js",
+    "build:webview": "vite build",
+    "watch": "concurrently \"npm run watch:ext\" \"npm run watch:webview\"",
+    "watch:ext": "node esbuild.js --watch",
+    "watch:webview": "vite build --watch",
+    "postinstall": "node -e \"const fs=require('fs'),p=require('path'),o=require('os'); if(o.platform()!=='win32'){const h=p.resolve(__dirname,'node_modules/node-pty/prebuilds',o.platform()+'-'+o.arch(),'spawn-helper'); if(fs.existsSync(h)){fs.chmodSync(h,0o755);console.log('Fixed spawn-helper permissions')}}\"",
+    "vscode:prepublish": "npm run build"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "concurrently": "^9.1.0",
+    "esbuild": "^0.24.0",
+    "tailwindcss": "^4.2.0",
+    "typescript": "^5.5.0",
+    "vite": "^6.0.0"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.3.0",
+    "@hookform/resolvers": "^5.2.2",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-web-links": "^0.12.0",
+    "@xterm/xterm": "^5.5.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "date-fns": "^4.1.0",
+    "embla-carousel-react": "^8.6.0",
+    "input-otp": "^1.4.2",
+    "lucide-react": "^0.469.0",
+    "next-themes": "^0.4.6",
+    "node-pty": "^1.0.0",
+    "radix-ui": "^1.4.3",
+    "react": "^19.0.0",
+    "react-day-picker": "^9.14.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.72.0",
+    "react-resizable-panels": "^4.8.0",
+    "recharts": "^3.8.0",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.0.0",
+    "tw-animate-css": "^1.0.0",
+    "vaul": "^1.1.2",
+    "zod": "^4.3.6"
+  }
+}
