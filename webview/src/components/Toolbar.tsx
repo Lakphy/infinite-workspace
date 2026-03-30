@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import {
   TerminalSquare,
   Globe,
+  FolderOpen,
   ZoomIn,
   ZoomOut,
   Maximize,
@@ -37,11 +38,13 @@ import {
 export interface Favorites {
   terminalCommands: string[];
   browserUrls: string[];
+  fileExplorerPaths: string[];
 }
 
 interface ToolbarProps {
   onNewTerminal: (command?: string) => void;
   onNewBrowser: (url?: string) => void;
+  onNewFileExplorer: (path?: string) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFitAll: () => void;
@@ -54,6 +57,7 @@ interface ToolbarProps {
 export function Toolbar({
   onNewTerminal,
   onNewBrowser,
+  onNewFileExplorer,
   onZoomIn,
   onZoomOut,
   onFitAll,
@@ -62,7 +66,7 @@ export function Toolbar({
   favorites,
   onUpdateFavorites,
 }: ToolbarProps) {
-  const [addDialog, setAddDialog] = useState<"terminal" | "browser" | null>(
+  const [addDialog, setAddDialog] = useState<"terminal" | "browser" | "fileExplorer" | null>(
     null
   );
   const [addValue, setAddValue] = useState("");
@@ -75,10 +79,15 @@ export function Toolbar({
         ...favorites,
         terminalCommands: [...favorites.terminalCommands, val],
       });
-    } else {
+    } else if (addDialog === "browser") {
       onUpdateFavorites({
         ...favorites,
         browserUrls: [...favorites.browserUrls, val],
+      });
+    } else {
+      onUpdateFavorites({
+        ...favorites,
+        fileExplorerPaths: [...favorites.fileExplorerPaths, val],
       });
     }
     setAddValue("");
@@ -98,6 +107,13 @@ export function Toolbar({
     onUpdateFavorites({
       ...favorites,
       browserUrls: favorites.browserUrls.filter((_, i) => i !== index),
+    });
+  };
+
+  const removeFileExplorerPath = (index: number) => {
+    onUpdateFavorites({
+      ...favorites,
+      fileExplorerPaths: favorites.fileExplorerPaths.filter((_, i) => i !== index),
     });
   };
 
@@ -246,6 +262,76 @@ export function Toolbar({
           </DropdownMenu>
         </div>
 
+        {/* File Explorer split button */}
+        <div className="flex items-center">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onNewFileExplorer()}
+                className="gap-1.5 h-7 px-2.5 text-xs rounded-lg rounded-r-none"
+              >
+                <FolderOpen className="size-3.5" />
+                Files
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={8}>
+              <p>New File Explorer</p>
+            </TooltipContent>
+          </Tooltip>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-1 rounded-lg rounded-l-none border-l border-border/30"
+              >
+                <ChevronDown className="size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" sideOffset={8}>
+              <DropdownMenuItem onSelect={() => onNewFileExplorer()}>
+                <FolderOpen className="size-4" />
+                Workspace Root
+              </DropdownMenuItem>
+              {favorites.fileExplorerPaths.length > 0 && <DropdownMenuSeparator />}
+              {favorites.fileExplorerPaths.map((p, index) => (
+                <DropdownMenuItem
+                  key={index}
+                  className="justify-between gap-4"
+                  onSelect={() => onNewFileExplorer(p)}
+                >
+                  <span className="truncate text-xs">{p}</span>
+                  <span
+                    role="button"
+                    className="shrink-0 text-muted-foreground/50 hover:text-destructive transition-colors"
+                    onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                    onPointerUp={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      removeFileExplorerPath(index);
+                    }}
+                  >
+                    <X className="size-3.5" />
+                  </span>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => {
+                  setAddValue("");
+                  setAddDialog("fileExplorer");
+                }}
+              >
+                <Plus className="size-4" />
+                Add Path...
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
         <Separator orientation="vertical" className="mx-1 h-4" />
 
         {/* Zoom controls */}
@@ -340,7 +426,9 @@ export function Toolbar({
             <DialogTitle>
               {addDialog === "terminal"
                 ? "Add Startup Command"
-                : "Add Favorite URL"}
+                : addDialog === "browser"
+                ? "Add Favorite URL"
+                : "Add Favorite Path"}
             </DialogTitle>
           </DialogHeader>
           <Input
@@ -348,7 +436,9 @@ export function Toolbar({
             placeholder={
               addDialog === "terminal"
                 ? "e.g. npm run dev"
-                : "e.g. http://localhost:3000"
+                : addDialog === "browser"
+                ? "e.g. http://localhost:3000"
+                : "e.g. /Users/me/projects"
             }
             value={addValue}
             onChange={(e) => setAddValue(e.target.value)}

@@ -15,6 +15,10 @@ export class Canvas {
   private animationId: number | null = null;
   private listeners: CanvasChangeListener[] = [];
   private dprMediaQuery: MediaQueryList | null = null;
+  private resizeObserver: ResizeObserver | null = null;
+  private onKeyDown: ((e: KeyboardEvent) => void) | null = null;
+  private onKeyUp: ((e: KeyboardEvent) => void) | null = null;
+  private destroyed = false;
 
   /**
    * When true the zoom is animating and we use cheap CSS transform scale.
@@ -56,11 +60,11 @@ export class Canvas {
     requestAnimationFrame(() => this.drawGrid());
 
     // Resize observer for grid canvas
-    const ro = new ResizeObserver(() => {
+    this.resizeObserver = new ResizeObserver(() => {
       this.syncGridCanvasSize();
       this.drawGrid();
     });
-    ro.observe(this.viewport);
+    this.resizeObserver.observe(this.viewport);
 
     // Listen for DPR changes (e.g. moving window between monitors)
     this.watchDpr();
@@ -78,6 +82,7 @@ export class Canvas {
   /** Watch for devicePixelRatio changes (multi-monitor, zoom) */
   private watchDpr() {
     const updateDpr = () => {
+      if (this.destroyed) return;
       this.syncGridCanvasSize();
       this.drawGrid();
       this.settleWindows();
@@ -110,20 +115,22 @@ export class Canvas {
     });
 
     // Space key for pan mode
-    window.addEventListener("keydown", (e) => {
+    this.onKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Space" && !e.repeat && !(e.target instanceof HTMLInputElement)) {
         this.spaceHeld = true;
         this.viewport.classList.add("pan-mode");
       }
-    });
-    window.addEventListener("keyup", (e) => {
+    };
+    this.onKeyUp = (e: KeyboardEvent) => {
       if (e.code === "Space") {
         this.spaceHeld = false;
         if (!this.isSpacePanning) {
           this.viewport.classList.remove("pan-mode");
         }
       }
-    });
+    };
+    window.addEventListener("keydown", this.onKeyDown);
+    window.addEventListener("keyup", this.onKeyUp);
   }
 
   private onPointerDown(e: PointerEvent) {
@@ -532,7 +539,11 @@ export class Canvas {
   }
 
   public destroy() {
+    this.destroyed = true;
     if (this.animationId) cancelAnimationFrame(this.animationId);
     if (this.settleTimer !== null) clearTimeout(this.settleTimer);
+    if (this.onKeyDown) window.removeEventListener("keydown", this.onKeyDown);
+    if (this.onKeyUp) window.removeEventListener("keyup", this.onKeyUp);
+    this.resizeObserver?.disconnect();
   }
 }

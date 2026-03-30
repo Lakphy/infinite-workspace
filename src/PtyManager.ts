@@ -8,15 +8,18 @@ export class PtyManager {
   private onData: (windowId: string, data: string) => void;
   private onExit: (windowId: string, exitCode: number) => void;
   private onError: (windowId: string, message: string) => void;
+  private defaultCwd: string;
 
   constructor(
     onData: (windowId: string, data: string) => void,
     onExit: (windowId: string, exitCode: number) => void,
-    onError?: (windowId: string, message: string) => void
+    onError?: (windowId: string, message: string) => void,
+    defaultCwd?: string
   ) {
     this.onData = onData;
     this.onExit = onExit;
     this.onError = onError || (() => {});
+    this.defaultCwd = defaultCwd || os.homedir();
     this.ensureSpawnHelperPermissions();
   }
 
@@ -66,7 +69,7 @@ export class PtyManager {
         name: "xterm-256color",
         cols: 80,
         rows: 24,
-        cwd: os.homedir(),
+        cwd: this.defaultCwd,
         env: process.env as { [key: string]: string },
       });
 

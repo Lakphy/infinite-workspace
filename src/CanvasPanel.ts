@@ -49,6 +49,10 @@ export class CanvasPanel {
     this.panel = panel;
     this.extensionUri = extensionUri;
 
+    // Use workspace folder as default CWD for terminals
+    const workspaceCwd =
+      vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+
     this.ptyManager = new PtyManager(
       (windowId, data) => {
         this.panel.webview.postMessage({
@@ -70,7 +74,8 @@ export class CanvasPanel {
           windowId,
           data: `\r\n\x1b[31m[Error] Failed to create terminal: ${message}\x1b[0m\r\n`,
         });
-      }
+      },
+      workspaceCwd
     );
 
     this.panel.webview.html = this.getHtmlContent();
@@ -90,6 +95,8 @@ export class CanvasPanel {
     data?: string;
     cols?: number;
     rows?: number;
+    dirPath?: string;
+    filePath?: string;
   }) {
     switch (msg.type) {
       case "createTerminal":
@@ -112,6 +119,71 @@ export class CanvasPanel {
           this.ptyManager.destroy(msg.windowId);
         }
         break;
+      case "readDirectory":
+        if (msg.windowId && msg.dirPath) {
+          this.handleReadDirectory(msg.windowId, msg.dirPath);
+        }
+        break;
+      case "openFileInEditor":
+        if (msg.filePath) {
+          const uri = vscode.Uri.file(msg.filePath);
+          vscode.commands.executeCommand("vscode.open", uri);
+        }
+        break;
+      case "getWorkspacePath":
+        if (msg.windowId) {
+          const folders = vscode.workspace.workspaceFolders;
+          const workspacePath = folders && folders.length > 0
+            ? folders[0].uri.fsPath
+            : process.env.HOME || "/";
+          this.panel.webview.postMessage({
+            type: "workspacePath",
+            windowId: msg.windowId,
+            data: workspacePath,
+          });
+        }
+        break;
+    }
+  }
+
+  private async handleReadDirectory(windowId: string, dirPath: string) {
+    try {
+      const resolvedPath = path.resolve(dirPath);
+      const entries = await fs.promises.readdir(resolvedPath, { withFileTypes: true });
+      const items = await Promise.all(
+        entries.map(async (entry) => {
+          const fullPath = path.join(resolvedPath, entry.name);
+          let size = 0;
+          let mtime = 0;
+          try {
+            const stat = await fs.promises.stat(fullPath);
+            size = stat.size;
+            mtime = stat.mtimeMs;
+          } catch {
+            // Permission denied or broken symlink
+          }
+          return {
+            name: entry.name,
+            isDirectory: entry.isDirectory(),
+            isSymlink: entry.isSymbolicLink(),
+            size,
+            mtime,
+            path: fullPath,
+          };
+        })
+      );
+      this.panel.webview.postMessage({
+        type: "directoryContents",
+        windowId,
+        data: { path: resolvedPath, items },
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.panel.webview.postMessage({
+        type: "directoryError",
+        windowId,
+        data: { path: dirPath, error: message },
+      });
     }
   }
 
