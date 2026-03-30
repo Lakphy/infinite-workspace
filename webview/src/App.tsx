@@ -39,6 +39,7 @@ export function App() {
   const canvasRef = useRef<Canvas | null>(null);
   const windowsRef = useRef<Map<string, WindowInstance>>(new Map());
   const topZIndexRef = useRef(1);
+  const focusedWindowIdRef = useRef<string | null>(null);
   const vscode = getVsCodeApi();
   const [zoomPercent, setZoomPercent] = useState(100);
 
@@ -56,6 +57,29 @@ export function App() {
     }
     vscode.setState({ windows: states });
   }, [vscode]);
+
+  const focusWindow = useCallback((windowId: string) => {
+    // Unfocus previous
+    if (focusedWindowIdRef.current && focusedWindowIdRef.current !== windowId) {
+      const prev = windowsRef.current.get(focusedWindowIdRef.current);
+      if (prev) prev.element.classList.remove("window-focused");
+    }
+    const win = windowsRef.current.get(windowId);
+    if (win) {
+      win.element.classList.add("window-focused");
+      win.zIndex = ++topZIndexRef.current;
+      win.element.style.zIndex = `${win.zIndex}`;
+    }
+    focusedWindowIdRef.current = windowId;
+  }, []);
+
+  const unfocusAll = useCallback(() => {
+    if (focusedWindowIdRef.current) {
+      const win = windowsRef.current.get(focusedWindowIdRef.current);
+      if (win) win.element.classList.remove("window-focused");
+      focusedWindowIdRef.current = null;
+    }
+  }, []);
 
   const createWindowElement = useCallback(
     (
@@ -106,6 +130,7 @@ export function App() {
         </div>
         <div class="window-content flex-1 overflow-hidden relative flex flex-col"></div>
         <div class="window-resize-handle"></div>
+        <div class="window-focus-overlay"></div>
       `;
 
       canvas.layer.appendChild(el);
@@ -128,17 +153,25 @@ export function App() {
 
       windowsRef.current.set(windowId, win);
 
-      // Click to bring to front
-      el.addEventListener("pointerdown", () => {
-        win.zIndex = ++topZIndexRef.current;
-        el.style.zIndex = `${win.zIndex}`;
+      // Click on window border to focus (and prevent canvas pan)
+      el.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        focusWindow(windowId);
       });
 
-      // Stop propagation on content area
+      // Stop propagation on content area (only reachable when focused)
       const content = el.querySelector(".window-content") as HTMLDivElement;
       content.addEventListener("pointerdown", (e) => e.stopPropagation());
       content.addEventListener("wheel", (e) => e.stopPropagation(), {
         passive: false,
+      });
+
+      // Focus overlay: captures pointer events on unfocused windows,
+      // but lets wheel events bubble through for canvas panning
+      const overlay = el.querySelector(".window-focus-overlay") as HTMLDivElement;
+      overlay.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        focusWindow(windowId);
       });
 
       setupDrag(win, canvas, saveState);
@@ -149,13 +182,16 @@ export function App() {
 
       return win;
     },
-    [saveState]
+    [saveState, focusWindow]
   );
 
   const destroyWindow = useCallback(
     (windowId: string) => {
       const win = windowsRef.current.get(windowId);
       if (!win) return;
+      if (focusedWindowIdRef.current === windowId) {
+        focusedWindowIdRef.current = null;
+      }
       win.onDestroy?.();
 
       // Exit animation
@@ -224,6 +260,11 @@ export function App() {
     // Track zoom changes
     canvas.onChange(({ scale }) => {
       setZoomPercent(Math.round(scale * 100));
+    });
+
+    // Click on canvas background unfocuses all windows
+    canvas.viewport.addEventListener("pointerdown", () => {
+      unfocusAll();
     });
 
     // Listen for extension messages

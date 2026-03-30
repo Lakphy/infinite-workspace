@@ -194,7 +194,7 @@ html, body, #root {
 }
 
 /* Active window glow */
-.workspace-window:focus-within {
+.workspace-window.window-focused {
   box-shadow:
     0 0 0 1px oklch(0.55 0.15 250 / 40%),
     0 8px 32px oklch(0 0 0 / 50%),
@@ -224,6 +224,18 @@ html, body, #root {
 
 .workspace-window:hover .window-resize-handle {
   opacity: 1;
+}
+
+/* Focus overlay — blocks interaction on unfocused windows */
+.window-focus-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  border-radius: inherit;
+}
+
+.workspace-window.window-focused .window-focus-overlay {
+  pointer-events: none;
 }
 
 .window-resize-handle::after {
