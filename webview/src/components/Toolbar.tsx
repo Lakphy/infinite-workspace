@@ -353,7 +353,7 @@ export function Toolbar({
             value={addValue}
             onChange={(e) => setAddValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && addValue.trim()) handleAdd();
+              if (e.key === "Enter" && !e.nativeEvent.isComposing && addValue.trim()) handleAdd();
             }}
           />
           <DialogFooter>
