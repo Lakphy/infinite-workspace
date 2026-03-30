@@ -2,7 +2,7 @@
   "name": "infinite-workspace",
   "displayName": "Infinite Workspace",
   "description": "An infinite canvas workspace with draggable terminal, browser, and file explorer windows — supports VS Code Desktop & Web",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "lakphy",
   "license": "MIT",
   "icon": "icon.png",
