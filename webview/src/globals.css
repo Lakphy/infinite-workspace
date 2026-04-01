@@ -231,10 +231,49 @@ html, body, #root {
   color: oklch(0.6 0 0);
 }
 .workspace-window .window-close {
-  color: oklch(0.45 0 0);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: oklch(0 0 0 / 8%);
+  color: transparent;
+  transition: background 0.2s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  padding: 0;
+  flex-shrink: 0;
 }
 .dark .workspace-window .window-close {
-  color: oklch(0.5 0 0);
+  background: oklch(1 0 0 / 10%);
+  color: transparent;
+}
+
+.workspace-window .window-close .window-close-icon {
+  transition: opacity 0.15s ease;
+  opacity: 0;
+}
+
+.workspace-window .window-close:hover {
+  background: oklch(0.6 0.24 25);
+  color: white;
+  transform: scale(1.15);
+  box-shadow: 0 0 6px oklch(0.6 0.24 25 / 40%);
+}
+.dark .workspace-window .window-close:hover {
+  background: oklch(0.62 0.25 25);
+  color: white;
+  box-shadow: 0 0 8px oklch(0.62 0.25 25 / 50%);
+}
+
+.workspace-window .window-close:hover .window-close-icon {
+  opacity: 1;
+}
+
+.workspace-window .window-close:active {
+  transform: scale(0.95);
+  background: oklch(0.52 0.22 25);
 }
 
 /* Entrance animation */

@@ -273,8 +273,8 @@ export class WindowManager {
           <span class="window-icon">${WINDOW_ICONS[type]}</span>
           <span class="window-label text-[10px] font-medium">${WINDOW_LABELS[type]}</span>
         </div>
-        <button class="window-close inline-flex items-center justify-center size-[16px] rounded-full hover:bg-[oklch(0.65_0.25_25)] hover:text-white transition-all duration-150 cursor-pointer border-none bg-transparent">
-          <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        <button class="window-close" title="Close">
+          <svg class="window-close-icon" xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
       <div class="window-content flex-1 overflow-hidden relative flex flex-col">
