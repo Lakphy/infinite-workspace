@@ -366,7 +366,7 @@ export function Toolbar({
       {/* ── Add favorite dialog ── */}
       <Dialog
         open={addDialog !== null}
-        onOpenChange={(open) => !open && setAddDialog(null)}
+        onOpenChange={(open: boolean) => !open && setAddDialog(null)}
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -388,8 +388,8 @@ export function Toolbar({
                   : "e.g. /Users/me/projects"
             }
             value={addValue}
-            onChange={(e) => setAddValue(e.target.value)}
-            onKeyDown={(e) => {
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAddValue(e.target.value)}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
               if (
                 e.key === "Enter" &&
                 !e.nativeEvent.isComposing &&
