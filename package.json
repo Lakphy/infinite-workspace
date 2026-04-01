@@ -2,7 +2,7 @@
   "name": "infinite-workspace",
   "displayName": "Infinite Workspace",
   "description": "An infinite canvas workspace with draggable terminal, browser, and file explorer windows — supports VS Code Desktop & Web",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "lakphy",
   "license": "MIT",
   "icon": "icon.png",
@@ -61,7 +61,10 @@
         },
         "infinite-workspace.colorMode": {
           "type": "string",
-          "enum": ["dark", "light"],
+          "enum": [
+            "dark",
+            "light"
+          ],
           "description": "Color mode for the workspace UI and embedded browser windows. Auto-detected from your VS Code theme on first launch."
         },
         "infinite-workspace.canvas.showGrid": {
@@ -206,7 +209,11 @@
         "infinite-workspace.terminal.cursorStyle": {
           "type": "string",
           "default": "block",
-          "enum": ["block", "underline", "bar"],
+          "enum": [
+            "block",
+            "underline",
+            "bar"
+          ],
           "description": "Terminal cursor style."
         },
         "infinite-workspace.terminal.scrollback": {
@@ -227,11 +234,22 @@
           "items": {
             "type": "object",
             "properties": {
-              "value": { "type": "string", "description": "The command to run." },
-              "width": { "type": "number", "description": "Optional custom window width." },
-              "height": { "type": "number", "description": "Optional custom window height." }
+              "value": {
+                "type": "string",
+                "description": "The command to run."
+              },
+              "width": {
+                "type": "number",
+                "description": "Optional custom window width."
+              },
+              "height": {
+                "type": "number",
+                "description": "Optional custom window height."
+              }
             },
-            "required": ["value"]
+            "required": [
+              "value"
+            ]
           },
           "description": "Quick-launch terminal command shortcuts."
         },
@@ -241,11 +259,22 @@
           "items": {
             "type": "object",
             "properties": {
-              "value": { "type": "string", "description": "The URL to open." },
-              "width": { "type": "number", "description": "Optional custom window width." },
-              "height": { "type": "number", "description": "Optional custom window height." }
+              "value": {
+                "type": "string",
+                "description": "The URL to open."
+              },
+              "width": {
+                "type": "number",
+                "description": "Optional custom window width."
+              },
+              "height": {
+                "type": "number",
+                "description": "Optional custom window height."
+              }
             },
-            "required": ["value"]
+            "required": [
+              "value"
+            ]
           },
           "description": "Quick-launch browser URL shortcuts."
         },
@@ -255,11 +284,22 @@
           "items": {
             "type": "object",
             "properties": {
-              "value": { "type": "string", "description": "The file system path to open." },
-              "width": { "type": "number", "description": "Optional custom window width." },
-              "height": { "type": "number", "description": "Optional custom window height." }
+              "value": {
+                "type": "string",
+                "description": "The file system path to open."
+              },
+              "width": {
+                "type": "number",
+                "description": "Optional custom window width."
+              },
+              "height": {
+                "type": "number",
+                "description": "Optional custom window height."
+              }
             },
-            "required": ["value"]
+            "required": [
+              "value"
+            ]
           },
           "description": "Quick-launch file explorer path shortcuts."
         }
