@@ -1,5 +1,13 @@
 export type CanvasChangeListener = (state: { scale: number; x: number; y: number }) => void;
 
+export interface CanvasConfig {
+  minScale: number;
+  maxScale: number;
+  zoomSpeed: number;
+  lerpFactor: number;
+  gridSpacing: number;
+}
+
 export class Canvas {
   private scale = 1;
   private targetScale = 1;
@@ -34,10 +42,13 @@ export class Canvas {
   private readonly gridCanvas: HTMLCanvasElement;
   public showGrid: boolean = true;
 
-  private static readonly MIN_SCALE = 0.05;
-  private static readonly MAX_SCALE = 8;
-  private static readonly ZOOM_SPEED = 0.08;
-  private static readonly LERP_FACTOR = 0.18;
+  private minScale = 0.05;
+  private maxScale = 8;
+  private zoomSpeed = 0.08;
+  private lerpFactor = 0.18;
+  private gridSpacing = 40;
+
+  private static readonly SETTLE_DELAY_MS_VALUE = 100;
 
   constructor(root: HTMLElement) {
     this.viewport = document.createElement("div");
@@ -211,8 +222,8 @@ export class Canvas {
     const factor = Math.exp(delta);
 
     const newScale = Math.min(
-      Canvas.MAX_SCALE,
-      Math.max(Canvas.MIN_SCALE, this.targetScale * factor)
+      this.maxScale,
+      Math.max(this.minScale, this.targetScale * factor)
     );
 
     const rect = this.viewport.getBoundingClientRect();
@@ -241,9 +252,9 @@ export class Canvas {
       const scaleChanging = ds >= 0.0001;
       if (scaleChanging) this.isAnimating = true;
 
-      this.scale += (this.targetScale - this.scale) * Canvas.LERP_FACTOR;
-      this.translateX += (this.targetTranslateX - this.translateX) * Canvas.LERP_FACTOR;
-      this.translateY += (this.targetTranslateY - this.translateY) * Canvas.LERP_FACTOR;
+      this.scale += (this.targetScale - this.scale) * this.lerpFactor;
+      this.translateX += (this.targetTranslateX - this.translateX) * this.lerpFactor;
+      this.translateY += (this.targetTranslateY - this.translateY) * this.lerpFactor;
 
       // Snap when close enough
       if (ds < 0.0001) this.scale = this.targetScale;
@@ -283,7 +294,7 @@ export class Canvas {
     this.settleTimer = window.setTimeout(() => {
       this.settleTimer = null;
       this.settleWindows();
-    }, Canvas.SETTLE_DELAY_MS);
+    }, Canvas.SETTLE_DELAY_MS_VALUE);
   }
 
   /**
@@ -350,7 +361,7 @@ export class Canvas {
     const dpr = devicePixelRatio;
 
     // Determine grid spacing that looks good at current zoom
-    const baseSpacing = 40;
+    const baseSpacing = this.gridSpacing;
     let spacing = baseSpacing * this.scale;
 
     // Subdivide or multiply to keep spacing in a visual sweet spot (20-80px)
@@ -493,7 +504,7 @@ export class Canvas {
   }
 
   public zoomTo(newScale: number) {
-    const clamped = Math.min(Canvas.MAX_SCALE, Math.max(Canvas.MIN_SCALE, newScale));
+    const clamped = Math.min(this.maxScale, Math.max(this.minScale, newScale));
     const rect = this.viewport.getBoundingClientRect();
     const cx = rect.width / 2;
     const cy = rect.height / 2;
@@ -540,6 +551,18 @@ export class Canvas {
     this.targetScale = newScale;
     this.targetTranslateX = rect.width / 2 - centerX * newScale;
     this.targetTranslateY = rect.height / 2 - centerY * newScale;
+  }
+
+  /** Apply configuration from VS Code settings at runtime */
+  public applyConfig(config: Partial<CanvasConfig>) {
+    if (config.minScale !== undefined) this.minScale = config.minScale;
+    if (config.maxScale !== undefined) this.maxScale = config.maxScale;
+    if (config.zoomSpeed !== undefined) this.zoomSpeed = config.zoomSpeed;
+    if (config.lerpFactor !== undefined) this.lerpFactor = config.lerpFactor;
+    if (config.gridSpacing !== undefined) {
+      this.gridSpacing = config.gridSpacing;
+      this.drawGrid();
+    }
   }
 
   public destroy() {

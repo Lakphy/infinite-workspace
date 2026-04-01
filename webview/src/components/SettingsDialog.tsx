@@ -34,6 +34,24 @@ export interface WindowSize {
   height: number;
 }
 
+export interface TerminalSettings {
+  fontSize: number;
+  lineHeight: number;
+  letterSpacing: number;
+  fontFamily: string;
+  cursorBlink: boolean;
+  cursorStyle: "block" | "underline" | "bar";
+  scrollback: number;
+}
+
+export interface CanvasSettings {
+  minScale: number;
+  maxScale: number;
+  zoomSpeed: number;
+  lerpFactor: number;
+  gridSpacing: number;
+}
+
 export interface AppSettings {
   showGrid: boolean;
   enableSnap: boolean;
@@ -43,6 +61,12 @@ export interface AppSettings {
     browser: WindowSize;
     fileExplorer: WindowSize;
   };
+  canvas: CanvasSettings;
+  window: {
+    minWidth: number;
+    minHeight: number;
+  };
+  terminal: TerminalSettings;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -53,6 +77,26 @@ export const DEFAULT_SETTINGS: AppSettings = {
     terminal: { width: 650, height: 380 },
     browser: { width: 750, height: 520 },
     fileExplorer: { width: 700, height: 480 },
+  },
+  canvas: {
+    minScale: 0.05,
+    maxScale: 8,
+    zoomSpeed: 0.08,
+    lerpFactor: 0.18,
+    gridSpacing: 40,
+  },
+  window: {
+    minWidth: 200,
+    minHeight: 150,
+  },
+  terminal: {
+    fontSize: 12,
+    lineHeight: 1.1,
+    letterSpacing: 0,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    cursorBlink: true,
+    cursorStyle: "block",
+    scrollback: 5000,
   },
 };
 

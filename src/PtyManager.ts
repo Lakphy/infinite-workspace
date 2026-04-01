@@ -9,18 +9,26 @@ export class PtyManager {
   private onExit: (windowId: string, exitCode: number) => void;
   private onError: (windowId: string, message: string) => void;
   private defaultCwd: string;
+  private shellOverride: string | undefined;
 
   constructor(
     onData: (windowId: string, data: string) => void,
     onExit: (windowId: string, exitCode: number) => void,
     onError?: (windowId: string, message: string) => void,
-    defaultCwd?: string
+    defaultCwd?: string,
+    shellOverride?: string
   ) {
     this.onData = onData;
     this.onExit = onExit;
     this.onError = onError || (() => {});
     this.defaultCwd = defaultCwd || os.homedir();
+    this.shellOverride = shellOverride;
     this.ensureSpawnHelperPermissions();
+  }
+
+  /** Update the shell override (called when settings change) */
+  setShellOverride(shell: string | undefined): void {
+    this.shellOverride = shell;
   }
 
   /**
@@ -60,9 +68,10 @@ export class PtyManager {
 
   create(windowId: string): void {
     const shell =
-      os.platform() === "win32"
+      this.shellOverride ||
+      (os.platform() === "win32"
         ? "powershell.exe"
-        : process.env.SHELL || "/bin/zsh";
+        : process.env.SHELL || "/bin/zsh");
 
     try {
       const ptyProcess = pty.spawn(shell, [], {

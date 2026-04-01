@@ -114,8 +114,8 @@ const CORNERS: Corner[] = ["tl", "tr", "bl", "br"];
 
 /** Base proximity distance (in screen px at 1× zoom) from a window corner to show the handle */
 const BASE_PROXIMITY_PX = 24;
-const MIN_W = 200;
-const MIN_H = 150;
+let configMinW = 200;
+let configMinH = 150;
 
 interface ActiveTarget {
   win: DraggableWindow;
@@ -178,19 +178,19 @@ export class ResizeHandleManager {
         let newY = startWinY;
 
         if (corner === "br") {
-          newW = Math.max(MIN_W, startW + dx);
-          newH = Math.max(MIN_H, startH + dy);
+          newW = Math.max(configMinW, startW + dx);
+          newH = Math.max(configMinH, startH + dy);
         } else if (corner === "bl") {
-          newW = Math.max(MIN_W, startW - dx);
-          newH = Math.max(MIN_H, startH + dy);
+          newW = Math.max(configMinW, startW - dx);
+          newH = Math.max(configMinH, startH + dy);
           newX = startWinX + (startW - newW);
         } else if (corner === "tr") {
-          newW = Math.max(MIN_W, startW + dx);
-          newH = Math.max(MIN_H, startH - dy);
+          newW = Math.max(configMinW, startW + dx);
+          newH = Math.max(configMinH, startH - dy);
           newY = startWinY + (startH - newH);
         } else if (corner === "tl") {
-          newW = Math.max(MIN_W, startW - dx);
-          newH = Math.max(MIN_H, startH - dy);
+          newW = Math.max(configMinW, startW - dx);
+          newH = Math.max(configMinH, startH - dy);
           newX = startWinX + (startW - newW);
           newY = startWinY + (startH - newH);
         }
@@ -344,4 +344,10 @@ export class ResizeHandleManager {
       this.handles[corner].remove();
     }
   }
+}
+
+/** Update the global minimum window size constraints */
+export function setWindowMinSize(minWidth: number, minHeight: number) {
+  configMinW = minWidth;
+  configMinH = minHeight;
 }

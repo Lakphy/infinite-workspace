@@ -58,6 +58,205 @@
           "type": "boolean",
           "default": false,
           "description": "Automatically open Infinite Workspace when VS Code starts."
+        },
+        "infinite-workspace.canvas.showGrid": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show background dot grid on the canvas."
+        },
+        "infinite-workspace.canvas.minScale": {
+          "type": "number",
+          "default": 0.05,
+          "minimum": 0.01,
+          "maximum": 1,
+          "description": "Minimum zoom scale for the canvas."
+        },
+        "infinite-workspace.canvas.maxScale": {
+          "type": "number",
+          "default": 8,
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Maximum zoom scale for the canvas."
+        },
+        "infinite-workspace.canvas.zoomSpeed": {
+          "type": "number",
+          "default": 0.08,
+          "minimum": 0.01,
+          "maximum": 0.5,
+          "description": "Zoom speed factor for scroll wheel zooming."
+        },
+        "infinite-workspace.canvas.lerpFactor": {
+          "type": "number",
+          "default": 0.18,
+          "minimum": 0.01,
+          "maximum": 1,
+          "description": "Animation interpolation factor (higher = snappier, lower = smoother)."
+        },
+        "infinite-workspace.canvas.gridSpacing": {
+          "type": "number",
+          "default": 40,
+          "minimum": 10,
+          "maximum": 200,
+          "description": "Base spacing (in canvas pixels) between grid dots."
+        },
+        "infinite-workspace.snap.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable snap-to-alignment guides when dragging windows."
+        },
+        "infinite-workspace.snap.threshold": {
+          "type": "number",
+          "default": 8,
+          "minimum": 2,
+          "maximum": 30,
+          "description": "Snap distance in screen pixels for alignment guides."
+        },
+        "infinite-workspace.defaultSize.terminal.width": {
+          "type": "number",
+          "default": 650,
+          "minimum": 100,
+          "maximum": 3000,
+          "description": "Default width for new terminal windows."
+        },
+        "infinite-workspace.defaultSize.terminal.height": {
+          "type": "number",
+          "default": 380,
+          "minimum": 100,
+          "maximum": 3000,
+          "description": "Default height for new terminal windows."
+        },
+        "infinite-workspace.defaultSize.browser.width": {
+          "type": "number",
+          "default": 750,
+          "minimum": 100,
+          "maximum": 3000,
+          "description": "Default width for new browser windows."
+        },
+        "infinite-workspace.defaultSize.browser.height": {
+          "type": "number",
+          "default": 520,
+          "minimum": 100,
+          "maximum": 3000,
+          "description": "Default height for new browser windows."
+        },
+        "infinite-workspace.defaultSize.fileExplorer.width": {
+          "type": "number",
+          "default": 700,
+          "minimum": 100,
+          "maximum": 3000,
+          "description": "Default width for new file explorer windows."
+        },
+        "infinite-workspace.defaultSize.fileExplorer.height": {
+          "type": "number",
+          "default": 480,
+          "minimum": 100,
+          "maximum": 3000,
+          "description": "Default height for new file explorer windows."
+        },
+        "infinite-workspace.window.minWidth": {
+          "type": "number",
+          "default": 200,
+          "minimum": 50,
+          "maximum": 500,
+          "description": "Minimum width when resizing windows."
+        },
+        "infinite-workspace.window.minHeight": {
+          "type": "number",
+          "default": 150,
+          "minimum": 50,
+          "maximum": 500,
+          "description": "Minimum height when resizing windows."
+        },
+        "infinite-workspace.terminal.fontSize": {
+          "type": "number",
+          "default": 12,
+          "minimum": 6,
+          "maximum": 36,
+          "description": "Font size for terminals in the workspace."
+        },
+        "infinite-workspace.terminal.lineHeight": {
+          "type": "number",
+          "default": 1.1,
+          "minimum": 0.8,
+          "maximum": 3,
+          "description": "Line height for terminals in the workspace."
+        },
+        "infinite-workspace.terminal.letterSpacing": {
+          "type": "number",
+          "default": 0,
+          "minimum": -5,
+          "maximum": 10,
+          "description": "Letter spacing for terminals in the workspace."
+        },
+        "infinite-workspace.terminal.fontFamily": {
+          "type": "string",
+          "default": "Menlo, Monaco, \"Courier New\", monospace",
+          "description": "Font family for terminals in the workspace."
+        },
+        "infinite-workspace.terminal.cursorBlink": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the terminal cursor blinks."
+        },
+        "infinite-workspace.terminal.cursorStyle": {
+          "type": "string",
+          "default": "block",
+          "enum": ["block", "underline", "bar"],
+          "description": "Terminal cursor style."
+        },
+        "infinite-workspace.terminal.scrollback": {
+          "type": "number",
+          "default": 5000,
+          "minimum": 100,
+          "maximum": 100000,
+          "description": "Number of scrollback lines to retain in terminal history."
+        },
+        "infinite-workspace.terminal.shell": {
+          "type": "string",
+          "default": "",
+          "description": "Override the default shell for terminals. Leave empty to use system default ($SHELL or PowerShell on Windows)."
+        },
+        "infinite-workspace.favorites.terminalCommands": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": { "type": "string", "description": "The command to run." },
+              "width": { "type": "number", "description": "Optional custom window width." },
+              "height": { "type": "number", "description": "Optional custom window height." }
+            },
+            "required": ["value"]
+          },
+          "description": "Quick-launch terminal command shortcuts."
+        },
+        "infinite-workspace.favorites.browserUrls": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": { "type": "string", "description": "The URL to open." },
+              "width": { "type": "number", "description": "Optional custom window width." },
+              "height": { "type": "number", "description": "Optional custom window height." }
+            },
+            "required": ["value"]
+          },
+          "description": "Quick-launch browser URL shortcuts."
+        },
+        "infinite-workspace.favorites.fileExplorerPaths": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": { "type": "string", "description": "The file system path to open." },
+              "width": { "type": "number", "description": "Optional custom window width." },
+              "height": { "type": "number", "description": "Optional custom window height." }
+            },
+            "required": ["value"]
+          },
+          "description": "Quick-launch file explorer path shortcuts."
         }
       }
     }

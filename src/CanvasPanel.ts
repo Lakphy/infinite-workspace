@@ -11,6 +11,50 @@ try {
   // Running in VS Code Web or node-pty is not available
 }
 
+/**
+ * Collect all infinite-workspace.* settings into a flat object
+ * that the webview can consume.
+ */
+function getAllSettings(): Record<string, unknown> {
+  const config = vscode.workspace.getConfiguration("infinite-workspace");
+  return {
+    openOnStartup: config.get<boolean>("openOnStartup", false),
+    // Canvas
+    "canvas.showGrid": config.get<boolean>("canvas.showGrid", true),
+    "canvas.minScale": config.get<number>("canvas.minScale", 0.05),
+    "canvas.maxScale": config.get<number>("canvas.maxScale", 8),
+    "canvas.zoomSpeed": config.get<number>("canvas.zoomSpeed", 0.08),
+    "canvas.lerpFactor": config.get<number>("canvas.lerpFactor", 0.18),
+    "canvas.gridSpacing": config.get<number>("canvas.gridSpacing", 40),
+    // Snap
+    "snap.enabled": config.get<boolean>("snap.enabled", true),
+    "snap.threshold": config.get<number>("snap.threshold", 8),
+    // Default sizes
+    "defaultSize.terminal.width": config.get<number>("defaultSize.terminal.width", 650),
+    "defaultSize.terminal.height": config.get<number>("defaultSize.terminal.height", 380),
+    "defaultSize.browser.width": config.get<number>("defaultSize.browser.width", 750),
+    "defaultSize.browser.height": config.get<number>("defaultSize.browser.height", 520),
+    "defaultSize.fileExplorer.width": config.get<number>("defaultSize.fileExplorer.width", 700),
+    "defaultSize.fileExplorer.height": config.get<number>("defaultSize.fileExplorer.height", 480),
+    // Window constraints
+    "window.minWidth": config.get<number>("window.minWidth", 200),
+    "window.minHeight": config.get<number>("window.minHeight", 150),
+    // Terminal
+    "terminal.fontSize": config.get<number>("terminal.fontSize", 12),
+    "terminal.lineHeight": config.get<number>("terminal.lineHeight", 1.1),
+    "terminal.letterSpacing": config.get<number>("terminal.letterSpacing", 0),
+    "terminal.fontFamily": config.get<string>("terminal.fontFamily", 'Menlo, Monaco, "Courier New", monospace'),
+    "terminal.cursorBlink": config.get<boolean>("terminal.cursorBlink", true),
+    "terminal.cursorStyle": config.get<string>("terminal.cursorStyle", "block"),
+    "terminal.scrollback": config.get<number>("terminal.scrollback", 5000),
+    "terminal.shell": config.get<string>("terminal.shell", ""),
+    // Favorites
+    "favorites.terminalCommands": config.get<unknown[]>("favorites.terminalCommands", []),
+    "favorites.browserUrls": config.get<unknown[]>("favorites.browserUrls", []),
+    "favorites.fileExplorerPaths": config.get<unknown[]>("favorites.fileExplorerPaths", []),
+  };
+}
+
 export class CanvasPanel {
   public static currentPanel: CanvasPanel | undefined;
   public static readonly viewType = "infiniteWorkspace";
@@ -66,6 +110,10 @@ export class CanvasPanel {
     const workspaceCwd =
       vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
+    // Read terminal shell override from settings
+    const config = vscode.workspace.getConfiguration("infinite-workspace");
+    const shellOverride = config.get<string>("terminal.shell", "");
+
     // Initialize PtyManager only when native modules are available
     if (PtyManagerClass) {
       this.ptyManager = new PtyManagerClass(
@@ -90,7 +138,8 @@ export class CanvasPanel {
             data: `\r\n\x1b[31m[Error] Failed to create terminal: ${message}\x1b[0m\r\n`,
           });
         },
-        workspaceCwd
+        workspaceCwd,
+        shellOverride || undefined
       );
     }
 
@@ -103,6 +152,35 @@ export class CanvasPanel {
     );
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
+
+    // Listen for configuration changes and push updates to webview
+    const configWatcher = vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration("infinite-workspace")) {
+        this.pushSettingsToWebview();
+
+        // Update PtyManager shell override if terminal.shell changed
+        if (e.affectsConfiguration("infinite-workspace.terminal.shell")) {
+          const cfg = vscode.workspace.getConfiguration("infinite-workspace");
+          const shell = cfg.get<string>("terminal.shell", "");
+          if (this.ptyManager) {
+            this.ptyManager.setShellOverride(shell || undefined);
+          }
+        }
+      }
+    });
+    this.disposables.push(configWatcher);
+
+    // Push initial settings to the webview once it's ready
+    // (small delay to let the webview load)
+    setTimeout(() => this.pushSettingsToWebview(), 100);
+  }
+
+  /** Send all current settings to the webview */
+  private pushSettingsToWebview() {
+    this.panel.webview.postMessage({
+      type: "allSettings",
+      settings: getAllSettings(),
+    });
   }
 
   private handleMessage(msg: {
@@ -201,6 +279,9 @@ export class CanvasPanel {
             value: cfg.get(msg.key),
           });
         }
+        break;
+      case "getAllSettings":
+        this.pushSettingsToWebview();
         break;
     }
   }

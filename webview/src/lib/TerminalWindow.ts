@@ -6,6 +6,26 @@ interface VsCodeApi {
   postMessage(msg: unknown): void;
 }
 
+export interface TerminalConfig {
+  fontSize: number;
+  lineHeight: number;
+  letterSpacing: number;
+  fontFamily: string;
+  cursorBlink: boolean;
+  cursorStyle: "block" | "underline" | "bar";
+  scrollback: number;
+}
+
+export const DEFAULT_TERMINAL_CONFIG: TerminalConfig = {
+  fontSize: 12,
+  lineHeight: 1.1,
+  letterSpacing: 0,
+  fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  cursorBlink: true,
+  cursorStyle: "block",
+  scrollback: 5000,
+};
+
 export class TerminalWindow {
   private terminal: Terminal;
   private fitAddon: FitAddon;
@@ -17,10 +37,13 @@ export class TerminalWindow {
   constructor(
     contentElement: HTMLDivElement,
     windowId: string,
-    vscode: VsCodeApi
+    vscode: VsCodeApi,
+    config?: Partial<TerminalConfig>
   ) {
     this.windowId = windowId;
     this.vscode = vscode;
+
+    const cfg = { ...DEFAULT_TERMINAL_CONFIG, ...config };
 
     // Create terminal container
     const container = document.createElement("div");
@@ -29,13 +52,13 @@ export class TerminalWindow {
 
     // Create xterm instance
     this.terminal = new Terminal({
-      fontSize: 12,
-      lineHeight: 1.1,
-      letterSpacing: 0,
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      cursorBlink: true,
-      cursorStyle: "block",
-      scrollback: 5000,
+      fontSize: cfg.fontSize,
+      lineHeight: cfg.lineHeight,
+      letterSpacing: cfg.letterSpacing,
+      fontFamily: cfg.fontFamily,
+      cursorBlink: cfg.cursorBlink,
+      cursorStyle: cfg.cursorStyle,
+      scrollback: cfg.scrollback,
       theme: {
         background: "#1e1e1e",
         foreground: "#d4d4d4",

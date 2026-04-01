@@ -5,7 +5,7 @@
  */
 
 import { Canvas } from "./canvas";
-import { TerminalWindow } from "./TerminalWindow";
+import { TerminalWindow, type TerminalConfig } from "./TerminalWindow";
 import { BrowserWindow } from "./BrowserWindow";
 import { FileExplorerWindow } from "./FileExplorerWindow";
 import { SnapEngine } from "./snapGuides";
@@ -81,6 +81,7 @@ export class WindowManager {
   private snapEngine: SnapEngine;
   private resizeHandleManager: ResizeHandleManager;
   private windowDefaults: WindowDefaults = { ...WINDOW_DEFAULTS };
+  private terminalConfig: Partial<TerminalConfig> = {};
 
   constructor(canvas: Canvas, vscode: VsCodeApi) {
     this.canvas = canvas;
@@ -104,6 +105,10 @@ export class WindowManager {
         this.windowDefaults[key] = { ...this.windowDefaults[key], ...defaults[key] };
       }
     }
+  }
+
+  setTerminalConfig(config: Partial<TerminalConfig>) {
+    this.terminalConfig = config;
   }
 
   // --- Focus management ---
@@ -370,7 +375,7 @@ export class WindowManager {
       ".window-content"
     ) as HTMLDivElement;
 
-    const termWindow = new TerminalWindow(contentEl, win.id, this.vscode);
+    const termWindow = new TerminalWindow(contentEl, win.id, this.vscode, this.terminalConfig);
     win.onDestroy = () => termWindow.destroy();
     win.onResize = () => termWindow.fit();
 
