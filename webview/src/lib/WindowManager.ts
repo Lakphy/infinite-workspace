@@ -74,6 +74,7 @@ export type WindowDefaults = Record<WindowType, { width: number; height: number 
 export class WindowManager {
   private windows = new Map<string, WindowInstance>();
   private browserWindows = new Map<string, BrowserWindow>();
+  private terminalWindows = new Map<string, TerminalWindow>();
   private topZIndex = 1;
   private focusedWindowId: string | null = null;
   private canvas: Canvas;
@@ -82,6 +83,7 @@ export class WindowManager {
   private resizeHandleManager: ResizeHandleManager;
   private windowDefaults: WindowDefaults = { ...WINDOW_DEFAULTS };
   private terminalConfig: Partial<TerminalConfig> = {};
+  private colorMode: "dark" | "light" = "dark";
 
   constructor(canvas: Canvas, vscode: VsCodeApi) {
     this.canvas = canvas;
@@ -109,6 +111,20 @@ export class WindowManager {
 
   setTerminalConfig(config: Partial<TerminalConfig>) {
     this.terminalConfig = config;
+  }
+
+  setColorMode(mode: "dark" | "light") {
+    this.colorMode = mode;
+    // Update all existing browser iframes
+    for (const [, bw] of this.browserWindows) {
+      bw.setColorMode(mode);
+    }
+    // Update all existing terminals
+    for (const [, tw] of this.terminalWindows) {
+      tw.setColorMode(mode);
+    }
+    // Window chrome (bg, border, shadow, titlebar, icons) is handled
+    // entirely by CSS via the .dark class on <html>, so no JS needed.
   }
 
   // --- Focus management ---
@@ -240,7 +256,7 @@ export class WindowManager {
 
     const el = document.createElement("div");
     el.className =
-      "workspace-window window-enter rounded-lg border border-[oklch(1_0_0/8%)] bg-[oklch(0.16_0_0)] shadow-[0_8px_32px_oklch(0_0_0/45%),0_2px_8px_oklch(0_0_0/25%)]";
+      "workspace-window window-enter rounded-lg border";
     el.dataset.canvasX = `${x}`;
     el.dataset.canvasY = `${y}`;
     el.dataset.canvasW = `${w}`;
@@ -252,12 +268,12 @@ export class WindowManager {
     this.canvas.updateWindowTransform(el);
 
     el.innerHTML = `
-      <div class="window-titlebar flex items-center justify-between px-2 py-[3px] bg-[oklch(0.20_0_0)] cursor-grab select-none shrink-0 border-b border-[oklch(1_0_0/5%)]" style="user-select:none;-webkit-user-select:none">
+      <div class="window-titlebar flex items-center justify-between px-2 py-[3px] cursor-grab select-none shrink-0 border-b" style="user-select:none;-webkit-user-select:none">
         <div class="flex items-center gap-1.5">
-          <span class="text-[oklch(0.55_0_0)]">${WINDOW_ICONS[type]}</span>
-          <span class="text-[10px] font-medium text-[oklch(0.6_0_0)]">${WINDOW_LABELS[type]}</span>
+          <span class="window-icon">${WINDOW_ICONS[type]}</span>
+          <span class="window-label text-[10px] font-medium">${WINDOW_LABELS[type]}</span>
         </div>
-        <button class="window-close inline-flex items-center justify-center size-[16px] rounded-full text-[oklch(0.5_0_0)] hover:bg-[oklch(0.65_0.25_25)] hover:text-white transition-all duration-150 cursor-pointer border-none bg-transparent">
+        <button class="window-close inline-flex items-center justify-center size-[16px] rounded-full hover:bg-[oklch(0.65_0.25_25)] hover:text-white transition-all duration-150 cursor-pointer border-none bg-transparent">
           <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
@@ -375,8 +391,12 @@ export class WindowManager {
       ".window-content"
     ) as HTMLDivElement;
 
-    const termWindow = new TerminalWindow(contentEl, win.id, this.vscode, this.terminalConfig);
-    win.onDestroy = () => termWindow.destroy();
+    const termWindow = new TerminalWindow(contentEl, win.id, this.vscode, this.terminalConfig, this.colorMode);
+    this.terminalWindows.set(win.id, termWindow);
+    win.onDestroy = () => {
+      termWindow.destroy();
+      this.terminalWindows.delete(win.id);
+    };
     win.onResize = () => termWindow.fit();
 
     if (initialCommand) {
@@ -414,7 +434,7 @@ export class WindowManager {
       ".window-content"
     ) as HTMLDivElement;
 
-    const browserWindow = new BrowserWindow(contentEl, win.id, url, zoom);
+    const browserWindow = new BrowserWindow(contentEl, win.id, url, zoom, this.colorMode);
     this.browserWindows.set(win.id, browserWindow);
     win.onDestroy = () => {
       browserWindow.destroy();

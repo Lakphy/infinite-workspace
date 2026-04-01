@@ -12,13 +12,51 @@ try {
 }
 
 /**
+ * Detect the VS Code color mode from the active theme name.
+ * If the theme name contains "light", return "light".
+ * If it contains "dark" or is unrecognisable, return "dark".
+ */
+function detectColorModeFromTheme(): "dark" | "light" {
+  const themeName = (vscode.workspace.getConfiguration("workbench")
+    .get<string>("colorTheme") ?? "").toLowerCase();
+  if (themeName.includes("light")) return "light";
+  // "dark" or unrecognised → default to dark
+  return "dark";
+}
+
+/**
+ * Ensure colorMode is persisted in settings.json.
+ * On first open (when the user has not set it yet), auto-detect from the
+ * active VS Code theme and write the result.
+ */
+async function ensureColorMode(): Promise<"dark" | "light"> {
+  const config = vscode.workspace.getConfiguration("infinite-workspace");
+  const inspection = config.inspect<string>("colorMode");
+
+  // If no value has ever been written (global, workspace, or folder), detect.
+  const hasExplicitValue =
+    inspection?.globalValue !== undefined ||
+    inspection?.workspaceValue !== undefined ||
+    inspection?.workspaceFolderValue !== undefined;
+
+  if (!hasExplicitValue) {
+    const detected = detectColorModeFromTheme();
+    await config.update("colorMode", detected, vscode.ConfigurationTarget.Global);
+    return detected;
+  }
+
+  return (config.get<string>("colorMode") as "dark" | "light") ?? "dark";
+}
+
+/**
  * Collect all infinite-workspace.* settings into a flat object
  * that the webview can consume.
  */
-function getAllSettings(): Record<string, unknown> {
+function getAllSettings(colorMode: "dark" | "light"): Record<string, unknown> {
   const config = vscode.workspace.getConfiguration("infinite-workspace");
   return {
     openOnStartup: config.get<boolean>("openOnStartup", false),
+    colorMode,
     // Canvas
     "canvas.showGrid": config.get<boolean>("canvas.showGrid", true),
     "canvas.minScale": config.get<number>("canvas.minScale", 0.05),
@@ -63,6 +101,7 @@ export class CanvasPanel {
   private readonly extensionUri: vscode.Uri;
   private ptyManager: InstanceType<typeof import("./PtyManager").PtyManager> | undefined;
   private disposables: vscode.Disposable[] = [];
+  private colorMode: "dark" | "light" = "dark";
 
   /** True when running in a context without native node modules (VS Code Web) */
   private readonly isWebEnvironment: boolean;
@@ -170,16 +209,22 @@ export class CanvasPanel {
     });
     this.disposables.push(configWatcher);
 
-    // Push initial settings to the webview once it's ready
-    // (small delay to let the webview load)
-    setTimeout(() => this.pushSettingsToWebview(), 100);
+    // Detect / initialise colorMode then push settings to webview
+    ensureColorMode().then((mode) => {
+      this.colorMode = mode;
+      // Small delay to let the webview finish loading
+      setTimeout(() => this.pushSettingsToWebview(), 100);
+    });
   }
 
   /** Send all current settings to the webview */
   private pushSettingsToWebview() {
+    // Re-read colorMode in case it was changed via settings
+    const config = vscode.workspace.getConfiguration("infinite-workspace");
+    this.colorMode = (config.get<string>("colorMode") as "dark" | "light") ?? this.colorMode;
     this.panel.webview.postMessage({
       type: "allSettings",
-      settings: getAllSettings(),
+      settings: getAllSettings(this.colorMode),
     });
   }
 

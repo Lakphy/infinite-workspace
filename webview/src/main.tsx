@@ -16,6 +16,10 @@ window.addEventListener("code-inspector:trackCode", (e: any) => {
     });
   }
 });
+
+// Start with dark mode (default) — will be overridden when settings arrive
+document.documentElement.classList.add("dark");
+document.documentElement.style.colorScheme = "dark";
 function mount() {
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>

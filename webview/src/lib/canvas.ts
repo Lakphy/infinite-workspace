@@ -47,6 +47,7 @@ export class Canvas {
   private zoomSpeed = 0.08;
   private lerpFactor = 0.18;
   private gridSpacing = 40;
+  private colorMode: "dark" | "light" = "dark";
 
   private static readonly SETTLE_DELAY_MS_VALUE = 100;
 
@@ -358,6 +359,7 @@ export class Canvas {
 
     if (!this.showGrid) return;
 
+    const isDark = this.colorMode === "dark";
     const dpr = devicePixelRatio;
 
     // Determine grid spacing that looks good at current zoom
@@ -378,9 +380,11 @@ export class Canvas {
     const offsetX = ((this.translateX * dpr) % spacing + spacing) % spacing;
     const offsetY = ((this.translateY * dpr) % spacing + spacing) % spacing;
 
-    // Dot grid
+    // Dot grid — adaptive colors for dark/light
     const dotAlpha = Math.min(0.2, 0.06 + (spacing - 20) * 0.002);
-    ctx.fillStyle = `rgba(255, 255, 255, ${dotAlpha})`;
+    ctx.fillStyle = isDark
+      ? `rgba(255, 255, 255, ${dotAlpha})`
+      : `rgba(0, 0, 0, ${dotAlpha * 1.2})`;
 
     const dotSize = Math.max(1, 1.2 * dpr);
     for (let x = offsetX; x < w; x += spacing) {
@@ -397,7 +401,7 @@ export class Canvas {
       const majorOffsetX = ((this.translateX * dpr) % majorSpacing + majorSpacing) % majorSpacing;
       const majorOffsetY = ((this.translateY * dpr) % majorSpacing + majorSpacing) % majorSpacing;
 
-      ctx.strokeStyle = `rgba(255, 255, 255, 0.04)`;
+      ctx.strokeStyle = isDark ? `rgba(255, 255, 255, 0.04)` : `rgba(0, 0, 0, 0.06)`;
       ctx.lineWidth = 1;
       ctx.beginPath();
       for (let x = majorOffsetX; x < w; x += majorSpacing) {
@@ -415,7 +419,7 @@ export class Canvas {
     const ox = this.translateX * dpr;
     const oy = this.translateY * dpr;
     if (ox > -2 && ox < w + 2 && oy > -2 && oy < h + 2) {
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.1)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(Math.round(ox) + 0.5, 0);
@@ -563,6 +567,13 @@ export class Canvas {
       this.gridSpacing = config.gridSpacing;
       this.drawGrid();
     }
+  }
+
+  /** Set color mode and re-draw the grid */
+  public setColorMode(mode: "dark" | "light") {
+    this.colorMode = mode;
+    // Viewport background is handled by CSS (.dark .canvas-viewport)
+    this.drawGrid();
   }
 
   public destroy() {

@@ -59,6 +59,11 @@
           "default": false,
           "description": "Automatically open Infinite Workspace when VS Code starts."
         },
+        "infinite-workspace.colorMode": {
+          "type": "string",
+          "enum": ["dark", "light"],
+          "description": "Color mode for the workspace UI and embedded browser windows. Auto-detected from your VS Code theme on first launch."
+        },
         "infinite-workspace.canvas.showGrid": {
           "type": "boolean",
           "default": true,

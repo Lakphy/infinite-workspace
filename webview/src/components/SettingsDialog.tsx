@@ -26,6 +26,8 @@ import {
   ChevronDown,
   ChevronRight,
   Home,
+  Moon,
+  Sun,
 } from "lucide-react";
 import type { Favorites, FavoriteItem } from "./Toolbar";
 
@@ -56,6 +58,7 @@ export interface AppSettings {
   showGrid: boolean;
   enableSnap: boolean;
   snapThreshold: number;
+  colorMode: "dark" | "light";
   defaultSizes: {
     terminal: WindowSize;
     browser: WindowSize;
@@ -73,6 +76,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showGrid: true,
   enableSnap: true,
   snapThreshold: 8,
+  colorMode: "dark",
   defaultSizes: {
     terminal: { width: 650, height: 380 },
     browser: { width: 750, height: 520 },
@@ -215,6 +219,39 @@ export function SettingsDialog({
 
           {/* ── General ── */}
           <TabsContent value="general" className="px-6 py-4 space-y-5 m-0">
+            {/* Appearance */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Appearance
+              </h4>
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="color-mode"
+                  className="flex items-center gap-2 text-sm font-normal cursor-pointer"
+                >
+                  {settings.colorMode === "dark" ? (
+                    <Moon className="size-3.5 text-muted-foreground" />
+                  ) : (
+                    <Sun className="size-3.5 text-muted-foreground" />
+                  )}
+                  Dark mode
+                </Label>
+                <Switch
+                  id="color-mode"
+                  size="sm"
+                  checked={settings.colorMode === "dark"}
+                  onCheckedChange={(v) =>
+                    onUpdateSettings({
+                      ...settings,
+                      colorMode: v ? "dark" : "light",
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            <Separator />
+
             {/* Grid */}
             <div className="space-y-3">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">

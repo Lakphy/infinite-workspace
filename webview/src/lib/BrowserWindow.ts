@@ -4,6 +4,10 @@ export class BrowserWindow {
   private zoomLevel = 1;
   private zoomLabel: HTMLSpanElement;
   private iframeContainer: HTMLDivElement;
+  private toolbar: HTMLDivElement;
+  private toolbarBtns: HTMLButtonElement[] = [];
+  private zoomSep: HTMLDivElement | null = null;
+  private colorMode: "dark" | "light" = "dark";
 
   private static ZOOM_STEPS = [
     0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5,
@@ -14,15 +18,19 @@ export class BrowserWindow {
     contentElement: HTMLDivElement,
     _windowId: string,
     initialUrl?: string,
-    initialZoom?: number
+    initialZoom?: number,
+    colorMode: "dark" | "light" = "dark"
   ) {
+    this.colorMode = colorMode;
+
     // Create browser toolbar
     const toolbar = document.createElement("div");
     toolbar.className =
-      "flex items-center gap-1 px-1.5 py-1 bg-[oklch(0.18_0_0)] border-b border-[oklch(1_0_0/8%)] shrink-0";
+      "flex items-center gap-1 px-1.5 py-1 shrink-0";
+    this.toolbar = toolbar;
 
     const btnClass =
-      "inline-flex items-center justify-center size-5 rounded text-[oklch(0.65_0_0)] hover:text-[oklch(0.85_0_0)] hover:bg-[oklch(1_0_0/8%)] transition-colors text-xs cursor-pointer border-none bg-transparent";
+      "inline-flex items-center justify-center size-5 rounded transition-colors text-xs cursor-pointer border-none bg-transparent browser-toolbar-btn";
 
     const backBtn = document.createElement("button");
     backBtn.className = btnClass;
@@ -64,7 +72,7 @@ export class BrowserWindow {
     this.urlInput = document.createElement("input");
     this.urlInput.type = "text";
     this.urlInput.className =
-      "flex-1 h-5 px-2 rounded text-[11px] bg-[oklch(0.14_0_0)] text-[oklch(0.8_0_0)] border border-[oklch(1_0_0/10%)] outline-none placeholder:text-[oklch(0.45_0_0)] focus:border-[oklch(0.5_0.15_250)] transition-colors";
+      "flex-1 h-5 px-2 rounded text-[11px] border outline-none focus:border-[oklch(0.5_0.15_250)] transition-colors";
     this.urlInput.placeholder = "Enter URL...";
 
     const goBtn = document.createElement("button");
@@ -95,8 +103,8 @@ export class BrowserWindow {
 
     // --- Zoom controls ---
     const zoomSep = document.createElement("div");
-    zoomSep.className =
-      "w-px h-3.5 mx-0.5 bg-[oklch(1_0_0/10%)] shrink-0";
+    zoomSep.className = "w-px h-3.5 mx-0.5 shrink-0";
+    this.zoomSep = zoomSep;
 
     const zoomOutBtn = document.createElement("button");
     zoomOutBtn.className = btnClass;
@@ -107,7 +115,7 @@ export class BrowserWindow {
 
     this.zoomLabel = document.createElement("span");
     this.zoomLabel.className =
-      "text-[10px] text-[oklch(0.6_0_0)] min-w-[32px] text-center select-none cursor-pointer hover:text-[oklch(0.85_0_0)] transition-colors";
+      "text-[10px] min-w-[32px] text-center select-none cursor-pointer transition-colors";
     this.zoomLabel.title = "Reset Zoom";
     this.zoomLabel.addEventListener("click", () => this.setZoom(1));
 
@@ -120,6 +128,9 @@ export class BrowserWindow {
 
     toolbar.addEventListener("pointerdown", (e) => e.stopPropagation());
 
+    // Track all buttons for color updates
+    this.toolbarBtns = [backBtn, forwardBtn, reloadBtn, goBtn, zoomOutBtn, zoomInBtn];
+
     toolbar.appendChild(backBtn);
     toolbar.appendChild(forwardBtn);
     toolbar.appendChild(reloadBtn);
@@ -130,6 +141,9 @@ export class BrowserWindow {
     toolbar.appendChild(this.zoomLabel);
     toolbar.appendChild(zoomInBtn);
 
+    // Apply color-mode-appropriate styles to all toolbar elements
+    this.applyToolbarColors();
+
     // Create iframe container (for zoom transform)
     this.iframeContainer = document.createElement("div");
     this.iframeContainer.className = "browser-zoom-container";
@@ -137,9 +151,9 @@ export class BrowserWindow {
     // Create iframe
     this.iframe = document.createElement("iframe");
     this.iframe.className = "browser-frame";
-    // Force dark mode: tell the browser to signal prefers-color-scheme: dark
-    // to content inside the iframe, so sites with dark mode support will use it
-    this.iframe.style.colorScheme = "dark";
+    // Force color-scheme to match the workspace mode so iframes with
+    // dark mode support will use it
+    this.iframe.style.colorScheme = colorMode;
     this.iframe.sandbox.add(
       "allow-scripts",
       "allow-same-origin",
@@ -204,6 +218,33 @@ export class BrowserWindow {
 
   public getZoom(): number {
     return this.zoomLevel;
+  }
+
+  public setColorMode(mode: "dark" | "light") {
+    this.colorMode = mode;
+    this.iframe.style.colorScheme = mode;
+    this.applyToolbarColors();
+  }
+
+  private applyToolbarColors() {
+    const isDark = this.colorMode === "dark";
+    // Toolbar background + border
+    this.toolbar.style.background = isDark ? "oklch(0.18 0 0)" : "oklch(0.92 0 0)";
+    this.toolbar.style.borderBottom = isDark ? "1px solid oklch(1 0 0 / 8%)" : "1px solid oklch(0 0 0 / 10%)";
+    // Buttons
+    for (const btn of this.toolbarBtns) {
+      btn.style.color = isDark ? "oklch(0.65 0 0)" : "oklch(0.4 0 0)";
+    }
+    // URL input
+    this.urlInput.style.background = isDark ? "oklch(0.14 0 0)" : "oklch(1 0 0)";
+    this.urlInput.style.color = isDark ? "oklch(0.8 0 0)" : "oklch(0.15 0 0)";
+    this.urlInput.style.borderColor = isDark ? "oklch(1 0 0 / 10%)" : "oklch(0 0 0 / 12%)";
+    // Zoom separator
+    if (this.zoomSep) {
+      this.zoomSep.style.background = isDark ? "oklch(1 0 0 / 10%)" : "oklch(0 0 0 / 12%)";
+    }
+    // Zoom label
+    this.zoomLabel.style.color = isDark ? "oklch(0.6 0 0)" : "oklch(0.4 0 0)";
   }
 
   public destroy() {

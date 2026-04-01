@@ -35,10 +35,13 @@ function parseVsCodeSettings(raw: Record<string, unknown>): {
     return val !== undefined ? (val as T) : fallback;
   };
 
+  const colorMode = get<"dark" | "light">("colorMode", DEFAULT_SETTINGS.colorMode);
+
   const settings: AppSettings = {
     showGrid: get("canvas.showGrid", DEFAULT_SETTINGS.showGrid),
     enableSnap: get("snap.enabled", DEFAULT_SETTINGS.enableSnap),
     snapThreshold: get("snap.threshold", DEFAULT_SETTINGS.snapThreshold),
+    colorMode,
     defaultSizes: {
       terminal: {
         width: get("defaultSize.terminal.width", DEFAULT_SETTINGS.defaultSizes.terminal.width),
@@ -92,6 +95,26 @@ function parseVsCodeSettings(raw: Record<string, unknown>): {
 }
 
 /**
+ * Apply the dark/light color mode to the document and browser iframes.
+ */
+function applyColorMode(mode: "dark" | "light") {
+  const root = document.documentElement;
+  if (mode === "dark") {
+    root.classList.add("dark");
+  } else {
+    root.classList.remove("dark");
+  }
+  // Update color-scheme so browser UI elements (scrollbars etc.) match
+  root.style.colorScheme = mode;
+
+  // Update all existing browser iframes
+  const iframes = document.querySelectorAll<HTMLIFrameElement>(".browser-frame");
+  for (const iframe of iframes) {
+    iframe.style.colorScheme = mode;
+  }
+}
+
+/**
  * Apply the structured AppSettings to all runtime systems.
  */
 function applySettingsToRuntime(
@@ -99,9 +122,14 @@ function applySettingsToRuntime(
   canvas: Canvas | null,
   manager: WindowManager | null
 ) {
+  // Apply color mode
+  applyColorMode(settings.colorMode);
+
   if (canvas) {
     canvas.showGrid = settings.showGrid;
     canvas.applyConfig(settings.canvas);
+    // Re-draw grid since colors changed
+    canvas.setColorMode(settings.colorMode);
   }
   if (manager) {
     const snap = manager.getSnapEngine();
@@ -109,6 +137,7 @@ function applySettingsToRuntime(
     snap.threshold = settings.snapThreshold;
     manager.setWindowDefaults(settings.defaultSizes);
     manager.setTerminalConfig(settings.terminal);
+    manager.setColorMode(settings.colorMode);
   }
   setWindowMinSize(settings.window.minWidth, settings.window.minHeight);
 }
@@ -161,6 +190,8 @@ export function App() {
       // Snap
       writeSetting("snap.enabled", s.enableSnap);
       writeSetting("snap.threshold", s.snapThreshold);
+      // Color mode
+      writeSetting("colorMode", s.colorMode);
       // Default sizes
       writeSetting("defaultSize.terminal.width", s.defaultSizes.terminal.width);
       writeSetting("defaultSize.terminal.height", s.defaultSizes.terminal.height);
