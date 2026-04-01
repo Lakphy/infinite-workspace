@@ -301,31 +301,17 @@ export class ResizeHandleManager {
     }
   };
 
-  /** Handle element size in CSS px — must match the CSS width/height */
-  private static readonly HANDLE_SIZE = 20;
-  /** Gap between bracket inner corner and window corner, in canvas px (scales with zoom) */
-  private static readonly GAP_CANVAS_PX = 0;
-
   /** Position all four handles at the screen corners of a window, scaled with zoom */
   private positionAllHandles(win: DraggableWindow) {
-    const sz = ResizeHandleManager.HANDLE_SIZE;
     const s = this.canvas.getScale();
-    // Gap in screen pixels — scales proportionally with zoom
-    const gap = ResizeHandleManager.GAP_CANVAS_PX * s;
     for (const corner of CORNERS) {
       const pos = this.cornerToScreen(win, corner);
       const h = this.handles[corner];
-      // Place the handle so its transform-origin (bracket inner corner)
-      // sits `gap` screen-px outside the window corner.
-      let lx = pos.x;
-      let ly = pos.y;
-      if (corner === "tl") { lx -= sz + gap; ly -= sz + gap; }
-      else if (corner === "tr") { lx += gap; ly -= sz + gap; }
-      else if (corner === "bl") { lx -= sz + gap; ly += gap; }
-      else { lx += gap; ly += gap; } // br
-      h.style.left = `${lx}px`;
-      h.style.top = `${ly}px`;
-      h.style.transform = `scale(${s})`;
+      // Place the center of the handle exactly on the window corner.
+      // Scaling happens uniformly around the center.
+      h.style.left = `${pos.x}px`;
+      h.style.top = `${pos.y}px`;
+      h.style.transform = `translate(-50%, -50%) scale(${s})`;
     }
   }
 

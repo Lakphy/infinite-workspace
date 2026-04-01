@@ -222,8 +222,8 @@ html, body, #root {
 /* ── Resize handles (external, live in viewport) ── */
 .window-resize-handle {
   position: absolute;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   z-index: 9998;
   opacity: 0;
   pointer-events: none;
@@ -235,44 +235,57 @@ html, body, #root {
   pointer-events: auto;
 }
 
-/* Per-corner cursor and transform-origin (anchor for zoom scaling) */
-.window-resize-handle[data-corner="tl"] { cursor: nwse-resize; transform-origin: 100% 100%; }
-.window-resize-handle[data-corner="tr"] { cursor: nesw-resize; transform-origin: 0% 100%; }
-.window-resize-handle[data-corner="bl"] { cursor: nesw-resize; transform-origin: 100% 0%; }
-.window-resize-handle[data-corner="br"] { cursor: nwse-resize; transform-origin: 0% 0%; }
+.window-resize-handle[data-corner="tl"] { cursor: nwse-resize; }
+.window-resize-handle[data-corner="tr"] { cursor: nesw-resize; }
+.window-resize-handle[data-corner="bl"] { cursor: nesw-resize; }
+.window-resize-handle[data-corner="br"] { cursor: nwse-resize; }
 
-/* Rounded corner bracket — matches window border-radius (rounded-lg = 10px) */
+/* 
+ * Rounded corner bracket — concentric with window border-radius.
+ * Window radius = 10px. Gap = 2px. Border = 2px. 
+ * So outer bracket radius = 10 + 2 + 2 = 14px.
+ * The handle is 24x24, center (12,12) is placed EXACTLY at the window corner.
+ */
 .window-resize-handle::after {
   content: "";
   position: absolute;
-  inset: 0;
+  width: 14px;
+  height: 14px;
   border-style: solid;
   border-color: oklch(0.85 0 0 / 60%);
   transition: border-color 0.15s ease, filter 0.15s ease;
 }
 
-/* ┌ top-left */
+/* ┌ top-left: curves around window center at local (22, 22) */
 .window-resize-handle[data-corner="tl"]::after {
+  top: 8px;
+  left: 8px;
   border-width: 2px 0 0 2px;
-  border-radius: 10px 0 0 0;
+  border-radius: 14px 0 0 0;
 }
 
-/* ┐ top-right */
+/* ┐ top-right: curves around window center at local (2, 22) */
 .window-resize-handle[data-corner="tr"]::after {
+  top: 8px;
+  left: 2px;
   border-width: 2px 2px 0 0;
-  border-radius: 0 10px 0 0;
+  border-radius: 0 14px 0 0;
 }
 
-/* └ bottom-left */
+/* └ bottom-left: curves around window center at local (22, 2) */
 .window-resize-handle[data-corner="bl"]::after {
+  top: 2px;
+  left: 8px;
   border-width: 0 0 2px 2px;
-  border-radius: 0 0 0 10px;
+  border-radius: 0 0 0 14px;
 }
 
-/* ┘ bottom-right */
+/* ┘ bottom-right: curves around window center at local (2, 2) */
 .window-resize-handle[data-corner="br"]::after {
+  top: 2px;
+  left: 2px;
   border-width: 0 2px 2px 0;
-  border-radius: 0 0 10px 0;
+  border-radius: 0 0 14px 0;
 }
 
 .window-resize-handle:hover::after {
