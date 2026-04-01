@@ -113,6 +113,8 @@ export class CanvasPanel {
     rows?: number;
     dirPath?: string;
     filePath?: string;
+    line?: number;
+    column?: number;
     key?: string;
     value?: unknown;
   }) {
@@ -157,7 +159,13 @@ export class CanvasPanel {
       case "openFileInEditor":
         if (msg.filePath) {
           const uri = vscode.Uri.file(msg.filePath);
-          vscode.commands.executeCommand("vscode.open", uri);
+          const options: vscode.TextDocumentShowOptions = {};
+          if (msg.line !== undefined) {
+            const line = Math.max(0, msg.line - 1);
+            const column = Math.max(0, (msg.column || 1) - 1);
+            options.selection = new vscode.Range(line, column, line, column);
+          }
+          vscode.commands.executeCommand("vscode.open", uri, options);
         }
         break;
       case "getWorkspacePath":

@@ -2,9 +2,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
+import { codeInspectorPlugin } from "code-inspector-plugin";
+
+const isWatch = process.argv.includes("--watch");
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), codeInspectorPlugin({ bundler: "vite", dev: isWatch, behavior: { locate: false } })],
   root: path.resolve(__dirname, "webview"),
   build: {
     outDir: path.resolve(__dirname, "out/webview"),
