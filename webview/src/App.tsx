@@ -9,7 +9,7 @@ import {
   DEFAULT_SETTINGS,
 } from "@/components/SettingsDialog";
 import { setWindowMinSize } from "@/lib/dragResize";
-import { TerminalSquare, Globe, FolderOpen } from "lucide-react";
+import { TerminalSquare, Globe, FolderOpen, Sparkles } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -55,6 +55,10 @@ function parseVsCodeSettings(raw: Record<string, unknown>): {
         width: get("defaultSize.fileExplorer.width", DEFAULT_SETTINGS.defaultSizes.fileExplorer.width),
         height: get("defaultSize.fileExplorer.height", DEFAULT_SETTINGS.defaultSizes.fileExplorer.height),
       },
+      agent: {
+        width: get("defaultSize.agent.width", DEFAULT_SETTINGS.defaultSizes.agent.width),
+        height: get("defaultSize.agent.height", DEFAULT_SETTINGS.defaultSizes.agent.height),
+      },
     },
     canvas: {
       minScale: get("canvas.minScale", DEFAULT_SETTINGS.canvas.minScale),
@@ -87,6 +91,7 @@ function parseVsCodeSettings(raw: Record<string, unknown>): {
     terminalCommands: migrate(get<unknown[]>("favorites.terminalCommands", [])),
     browserUrls: migrate(get<unknown[]>("favorites.browserUrls", [])),
     fileExplorerPaths: migrate(get<unknown[]>("favorites.fileExplorerPaths", [])),
+    agentPaths: migrate(get<unknown[]>("favorites.agentPaths", [])),
   };
 
   const openOnStartup = get<boolean>("openOnStartup", false);
@@ -199,6 +204,8 @@ export function App() {
       writeSetting("defaultSize.browser.height", s.defaultSizes.browser.height);
       writeSetting("defaultSize.fileExplorer.width", s.defaultSizes.fileExplorer.width);
       writeSetting("defaultSize.fileExplorer.height", s.defaultSizes.fileExplorer.height);
+      writeSetting("defaultSize.agent.width", s.defaultSizes.agent.width);
+      writeSetting("defaultSize.agent.height", s.defaultSizes.agent.height);
       // Window constraints
       writeSetting("window.minWidth", s.window.minWidth);
       writeSetting("window.minHeight", s.window.minHeight);
@@ -214,6 +221,7 @@ export function App() {
       writeSetting("favorites.terminalCommands", f.terminalCommands);
       writeSetting("favorites.browserUrls", f.browserUrls);
       writeSetting("favorites.fileExplorerPaths", f.fileExplorerPaths);
+      writeSetting("favorites.agentPaths", f.agentPaths || []);
     },
     [writeSetting]
   );
@@ -225,6 +233,7 @@ export function App() {
       writeSetting("favorites.terminalCommands", newFavorites.terminalCommands);
       writeSetting("favorites.browserUrls", newFavorites.browserUrls);
       writeSetting("favorites.fileExplorerPaths", newFavorites.fileExplorerPaths);
+      writeSetting("favorites.agentPaths", newFavorites.agentPaths || []);
       // Also save to webview state for quick restore
       const prev = vscode.getState() as Record<string, unknown> | null;
       vscode.setState({ ...prev, favorites: newFavorites });
@@ -327,6 +336,7 @@ export function App() {
         terminalCommands: migrate(f.terminalCommands),
         browserUrls: migrate(f.browserUrls),
         fileExplorerPaths: migrate(f.fileExplorerPaths),
+        agentPaths: migrate(f.agentPaths),
       });
     }
     if (savedState?.windows) {
@@ -373,6 +383,9 @@ export function App() {
             }
             onNewFileExplorer={(path, w, h) =>
               managerRef.current?.createFileExplorerWindow(undefined, undefined, undefined, path, w, h)
+            }
+            onNewAgent={(path, w, h) =>
+              managerRef.current?.createAgentWindow(undefined, undefined, undefined, path, w, h)
             }
             onZoomIn={() =>
               canvasRef.current?.zoomTo(canvasRef.current.getScale() * 1.3)
@@ -469,6 +482,34 @@ export function App() {
                 onClick={() => {
                   const { canvasX, canvasY } = ctxPos();
                   managerRef.current?.createFileExplorerWindow(undefined, canvasX, canvasY, item.value, item.width, item.height);
+                }}
+              >
+                <span className="truncate text-xs">{item.value}</span>
+              </ContextMenuItem>
+            ))}
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <Sparkles className="size-4" />
+            New Agent
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem
+              onClick={() => {
+                const { canvasX, canvasY } = ctxPos();
+                managerRef.current?.createAgentWindow(undefined, canvasX, canvasY);
+              }}
+            >
+              Workspace Root
+            </ContextMenuItem>
+            {(favorites.agentPaths || []).length > 0 && <ContextMenuSeparator />}
+            {(favorites.agentPaths || []).map((item, i) => (
+              <ContextMenuItem
+                key={i}
+                onClick={() => {
+                  const { canvasX, canvasY } = ctxPos();
+                  managerRef.current?.createAgentWindow(undefined, canvasX, canvasY, item.value, item.width, item.height);
                 }}
               >
                 <span className="truncate text-xs">{item.value}</span>

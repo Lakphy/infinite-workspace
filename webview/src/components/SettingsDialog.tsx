@@ -16,6 +16,7 @@ import {
   TerminalSquare,
   Globe,
   FolderOpen,
+  Sparkles,
   Plus,
   X,
   Settings2,
@@ -63,6 +64,7 @@ export interface AppSettings {
     terminal: WindowSize;
     browser: WindowSize;
     fileExplorer: WindowSize;
+    agent: WindowSize;
   };
   canvas: CanvasSettings;
   window: {
@@ -81,6 +83,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     terminal: { width: 650, height: 380 },
     browser: { width: 750, height: 520 },
     fileExplorer: { width: 700, height: 480 },
+    agent: { width: 700, height: 500 },
   },
   canvas: {
     minScale: 0.05,
@@ -126,7 +129,7 @@ export function SettingsDialog({
   onUpdateOpenOnStartup,
 }: SettingsDialogProps) {
   const [addType, setAddType] = useState<
-    "terminal" | "browser" | "fileExplorer" | null
+    "terminal" | "browser" | "fileExplorer" | "agent" | null
   >(null);
   const [addValue, setAddValue] = useState("");
   const [addWidth, setAddWidth] = useState("");
@@ -157,6 +160,11 @@ export function SettingsDialog({
         ...favorites,
         browserUrls: [...favorites.browserUrls, item],
       });
+    } else if (addType === "agent") {
+      onUpdateFavorites({
+        ...favorites,
+        agentPaths: [...(favorites.agentPaths || []), item],
+      });
     } else {
       onUpdateFavorites({
         ...favorites,
@@ -168,7 +176,7 @@ export function SettingsDialog({
   };
 
   const updateDefaultSize = (
-    type: "terminal" | "browser" | "fileExplorer",
+    type: "terminal" | "browser" | "fileExplorer" | "agent",
     dim: "width" | "height",
     value: string
   ) => {
@@ -356,6 +364,14 @@ export function SettingsDialog({
                   updateDefaultSize("fileExplorer", dim, val)
                 }
               />
+              <DefaultSizeRow
+                icon={<Sparkles className="size-3.5 text-muted-foreground" />}
+                label="Agent"
+                size={settings.defaultSizes.agent}
+                onChange={(dim, val) =>
+                  updateDefaultSize("agent", dim, val)
+                }
+              />
             </div>
 
             <Separator />
@@ -507,6 +523,46 @@ export function SettingsDialog({
                 })
               }
             />
+
+            <Separator />
+
+            {/* Agent Paths */}
+            <FavoriteSection
+              icon={<Sparkles className="size-3.5" />}
+              title="Agent Paths"
+              items={favorites.agentPaths || []}
+              placeholder="e.g. /Users/me/projects"
+              defaultSize={settings.defaultSizes.agent}
+              addType="agent"
+              currentAddType={addType}
+              addValue={addValue}
+              addWidth={addWidth}
+              addHeight={addHeight}
+              onSetAddType={(t) => {
+                resetAddForm();
+                setAddType(t);
+              }}
+              onSetAddValue={setAddValue}
+              onSetAddWidth={setAddWidth}
+              onSetAddHeight={setAddHeight}
+              onAdd={handleAdd}
+              onRemove={(index) =>
+                onUpdateFavorites({
+                  ...favorites,
+                  agentPaths: (favorites.agentPaths || []).filter(
+                    (_, i) => i !== index
+                  ),
+                })
+              }
+              onUpdateItem={(index, item) =>
+                onUpdateFavorites({
+                  ...favorites,
+                  agentPaths: (favorites.agentPaths || []).map((v, i) =>
+                    i === index ? item : v
+                  ),
+                })
+              }
+            />
           </TabsContent>
         </Tabs>
       </DialogContent>
@@ -564,12 +620,12 @@ interface FavoriteSectionProps {
   items: FavoriteItem[];
   placeholder: string;
   defaultSize: WindowSize;
-  addType: "terminal" | "browser" | "fileExplorer";
-  currentAddType: "terminal" | "browser" | "fileExplorer" | null;
+  addType: "terminal" | "browser" | "fileExplorer" | "agent";
+  currentAddType: "terminal" | "browser" | "fileExplorer" | "agent" | null;
   addValue: string;
   addWidth: string;
   addHeight: string;
-  onSetAddType: (type: "terminal" | "browser" | "fileExplorer" | null) => void;
+  onSetAddType: (type: "terminal" | "browser" | "fileExplorer" | "agent" | null) => void;
   onSetAddValue: (value: string) => void;
   onSetAddWidth: (value: string) => void;
   onSetAddHeight: (value: string) => void;

@@ -11,6 +11,15 @@ try {
   // Running in VS Code Web or node-pty is not available
 }
 
+// Claude Agent SDK is optional
+let AgentManagerClass: typeof import("./AgentManager").AgentManager | undefined;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  AgentManagerClass = require("./AgentManager").AgentManager;
+} catch {
+  // SDK not available
+}
+
 /**
  * Detect the VS Code color mode from the active theme name.
  * If the theme name contains "light", return "light".
@@ -74,6 +83,17 @@ function getAllSettings(colorMode: "dark" | "light"): Record<string, unknown> {
     "defaultSize.browser.height": config.get<number>("defaultSize.browser.height", 520),
     "defaultSize.fileExplorer.width": config.get<number>("defaultSize.fileExplorer.width", 700),
     "defaultSize.fileExplorer.height": config.get<number>("defaultSize.fileExplorer.height", 480),
+    "defaultSize.agent.width": config.get<number>("defaultSize.agent.width", 700),
+    "defaultSize.agent.height": config.get<number>("defaultSize.agent.height", 500),
+    // Agent SDK options
+    "agent.model": config.get<string>("agent.model", ""),
+    "agent.permissionMode": config.get<string>("agent.permissionMode", "bypassPermissions"),
+    "agent.maxTurns": config.get<number>("agent.maxTurns", 0),
+    "agent.maxBudgetUsd": config.get<number>("agent.maxBudgetUsd", 0),
+    "agent.effort": config.get<string>("agent.effort", "high"),
+    "agent.customSystemPrompt": config.get<string>("agent.customSystemPrompt", ""),
+    "agent.allowedTools": config.get<string[]>("agent.allowedTools", []),
+    "agent.disallowedTools": config.get<string[]>("agent.disallowedTools", []),
     // Window constraints
     "window.minWidth": config.get<number>("window.minWidth", 200),
     "window.minHeight": config.get<number>("window.minHeight", 150),
@@ -90,6 +110,7 @@ function getAllSettings(colorMode: "dark" | "light"): Record<string, unknown> {
     "favorites.terminalCommands": config.get<unknown[]>("favorites.terminalCommands", []),
     "favorites.browserUrls": config.get<unknown[]>("favorites.browserUrls", []),
     "favorites.fileExplorerPaths": config.get<unknown[]>("favorites.fileExplorerPaths", []),
+    "favorites.agentPaths": config.get<unknown[]>("favorites.agentPaths", []),
   };
 }
 
@@ -100,6 +121,7 @@ export class CanvasPanel {
   private readonly panel: vscode.WebviewPanel;
   private readonly extensionUri: vscode.Uri;
   private ptyManager: InstanceType<typeof import("./PtyManager").PtyManager> | undefined;
+  private agentManager: InstanceType<typeof import("./AgentManager").AgentManager> | undefined;
   private disposables: vscode.Disposable[] = [];
   private colorMode: "dark" | "light" = "dark";
 
@@ -152,6 +174,19 @@ export class CanvasPanel {
     // Read terminal shell override from settings
     const config = vscode.workspace.getConfiguration("infinite-workspace");
     const shellOverride = config.get<string>("terminal.shell", "");
+
+    // Initialize AgentManager (independent of PtyManager)
+    if (AgentManagerClass) {
+      this.agentManager = new AgentManagerClass(
+        (windowId, data) => {
+          this.panel.webview.postMessage({
+            ...data,
+            windowId,
+          });
+        },
+        workspaceCwd
+      );
+    }
 
     // Initialize PtyManager only when native modules are available
     if (PtyManagerClass) {
@@ -240,6 +275,7 @@ export class CanvasPanel {
     column?: number;
     key?: string;
     value?: unknown;
+    agentConfig?: Record<string, unknown>;
   }) {
     switch (msg.type) {
       case "createTerminal":
@@ -307,6 +343,73 @@ export class CanvasPanel {
             windowId: msg.windowId,
             data: workspacePath,
           });
+        }
+        break;
+      case "pickDirectory":
+        if (msg.windowId) {
+          const defaultUri = msg.data
+            ? vscode.Uri.file(msg.data as string)
+            : vscode.workspace.workspaceFolders?.[0]?.uri;
+          vscode.window
+            .showOpenDialog({
+              canSelectFiles: false,
+              canSelectFolders: true,
+              canSelectMany: false,
+              defaultUri,
+              title: "Select Working Directory",
+            })
+            .then((uris) => {
+              if (uris && uris.length > 0) {
+                this.panel.webview.postMessage({
+                  type: "pickedDirectory",
+                  windowId: msg.windowId,
+                  data: uris[0].fsPath,
+                });
+              }
+            });
+        }
+        break;
+      case "agentCreate":
+        if (msg.windowId) {
+          if (this.agentManager) {
+            // Read agent config from VS Code settings as defaults, merged with per-window overrides
+            const agConfig = vscode.workspace.getConfiguration("infinite-workspace");
+            const agentOpts = {
+              model: (msg.agentConfig?.model as string) || agConfig.get<string>("agent.model", ""),
+              permissionMode: (msg.agentConfig?.permissionMode as string) || agConfig.get<string>("agent.permissionMode", "bypassPermissions"),
+              maxTurns: (msg.agentConfig?.maxTurns as number) || agConfig.get<number>("agent.maxTurns", 0),
+              maxBudgetUsd: (msg.agentConfig?.maxBudgetUsd as number) || agConfig.get<number>("agent.maxBudgetUsd", 0),
+              effort: (msg.agentConfig?.effort as string) || agConfig.get<string>("agent.effort", "high"),
+              customSystemPrompt: (msg.agentConfig?.customSystemPrompt as string) || agConfig.get<string>("agent.customSystemPrompt", ""),
+              allowedTools: (msg.agentConfig?.allowedTools as string[]) || agConfig.get<string[]>("agent.allowedTools", []),
+              disallowedTools: (msg.agentConfig?.disallowedTools as string[]) || agConfig.get<string[]>("agent.disallowedTools", []),
+            };
+            this.agentManager.create(msg.windowId, msg.data as string | undefined, agentOpts);
+          } else {
+            this.panel.webview.postMessage({
+              type: "agentMessage",
+              windowId: msg.windowId,
+              message: {
+                type: "agentError",
+                error: "Claude Agent SDK is not available. Please install @anthropic-ai/claude-agent-sdk and ensure Claude Code CLI is installed.",
+              },
+            });
+          }
+        }
+        break;
+      case "agentPrompt":
+        if (msg.windowId && msg.data !== undefined) {
+          this.agentManager?.sendPrompt(msg.windowId, msg.data as string, msg.dirPath);
+        }
+        break;
+      case "agentAbort":
+        if (msg.windowId) {
+          this.agentManager?.abort(msg.windowId);
+        }
+        break;
+      case "agentDestroy":
+        if (msg.windowId) {
+          this.agentManager?.destroy(msg.windowId);
         }
         break;
       case "updateExtensionSetting":
@@ -443,6 +546,7 @@ export class CanvasPanel {
   public dispose() {
     CanvasPanel.currentPanel = undefined;
     this.ptyManager?.disposeAll();
+    this.agentManager?.disposeAll();
     this.panel.dispose();
     while (this.disposables.length) {
       const d = this.disposables.pop();

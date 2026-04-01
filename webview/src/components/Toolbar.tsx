@@ -25,6 +25,7 @@ import {
   TerminalSquare,
   Globe,
   FolderOpen,
+  Sparkles,
   ZoomIn,
   ZoomOut,
   Maximize,
@@ -45,12 +46,14 @@ export interface Favorites {
   terminalCommands: FavoriteItem[];
   browserUrls: FavoriteItem[];
   fileExplorerPaths: FavoriteItem[];
+  agentPaths?: FavoriteItem[];
 }
 
 interface ToolbarProps {
   onNewTerminal: (command?: string, width?: number, height?: number) => void;
   onNewBrowser: (url?: string, width?: number, height?: number) => void;
   onNewFileExplorer: (path?: string, width?: number, height?: number) => void;
+  onNewAgent: (path?: string, width?: number, height?: number) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFitAll: () => void;
@@ -195,6 +198,7 @@ export function Toolbar({
   onNewTerminal,
   onNewBrowser,
   onNewFileExplorer,
+  onNewAgent,
   onZoomIn,
   onZoomOut,
   onFitAll,
@@ -205,7 +209,7 @@ export function Toolbar({
   onOpenSettings,
 }: ToolbarProps) {
   const [addDialog, setAddDialog] = useState<
-    "terminal" | "browser" | "fileExplorer" | null
+    "terminal" | "browser" | "fileExplorer" | "agent" | null
   >(null);
   const [addValue, setAddValue] = useState("");
 
@@ -222,6 +226,11 @@ export function Toolbar({
       onUpdateFavorites({
         ...favorites,
         browserUrls: [...favorites.browserUrls, item],
+      });
+    } else if (addDialog === "agent") {
+      onUpdateFavorites({
+        ...favorites,
+        agentPaths: [...(favorites.agentPaths || []), item],
       });
     } else {
       onUpdateFavorites({
@@ -310,6 +319,31 @@ export function Toolbar({
             onAdd={() => {
               setAddValue("");
               setAddDialog("fileExplorer");
+            }}
+          />
+
+          <SplitButton
+            icon={Sparkles}
+            label="Agent"
+            tooltip="New Agent"
+            onDefault={() => onNewAgent()}
+            onSelectItem={(item) =>
+              onNewAgent(item.value, item.width, item.height)
+            }
+            emptyLabel="Workspace Root"
+            items={favorites.agentPaths || []}
+            onRemoveItem={(i) =>
+              onUpdateFavorites({
+                ...favorites,
+                agentPaths: (favorites.agentPaths || []).filter(
+                  (_, idx) => idx !== i
+                ),
+              })
+            }
+            addLabel="Add Path..."
+            onAdd={() => {
+              setAddValue("");
+              setAddDialog("agent");
             }}
           />
         </div>

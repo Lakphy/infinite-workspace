@@ -2,7 +2,7 @@
   "name": "infinite-workspace",
   "displayName": "Infinite Workspace",
   "description": "An infinite canvas workspace with draggable terminal, browser, and file explorer windows — supports VS Code Desktop & Web",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "publisher": "lakphy",
   "license": "MIT",
   "icon": "icon.png",
@@ -161,6 +161,85 @@
           "maximum": 3000,
           "description": "Default height for new file explorer windows."
         },
+        "infinite-workspace.defaultSize.agent.width": {
+          "type": "number",
+          "default": 700,
+          "minimum": 100,
+          "maximum": 3000,
+          "description": "Default width for new agent windows."
+        },
+        "infinite-workspace.defaultSize.agent.height": {
+          "type": "number",
+          "default": 500,
+          "minimum": 100,
+          "maximum": 3000,
+          "description": "Default height for new agent windows."
+        },
+        "infinite-workspace.agent.model": {
+          "type": "string",
+          "default": "",
+          "description": "Claude model to use (e.g. 'claude-sonnet-4-20250514'). Leave empty for default."
+        },
+        "infinite-workspace.agent.permissionMode": {
+          "type": "string",
+          "default": "bypassPermissions",
+          "enum": [
+            "default",
+            "acceptEdits",
+            "bypassPermissions"
+          ],
+          "enumDescriptions": [
+            "Normal permission mode — prompts for dangerous operations",
+            "Auto-accept file edits, prompt for other operations",
+            "Bypass all permissions — agent operates autonomously"
+          ],
+          "description": "Permission mode for the agent session."
+        },
+        "infinite-workspace.agent.maxTurns": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Maximum agentic turns (tool-use round trips). 0 = unlimited."
+        },
+        "infinite-workspace.agent.maxBudgetUsd": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "Maximum budget in USD for a single query. 0 = unlimited."
+        },
+        "infinite-workspace.agent.effort": {
+          "type": "string",
+          "default": "high",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "max"
+          ],
+          "description": "How much effort Claude puts into its response."
+        },
+        "infinite-workspace.agent.customSystemPrompt": {
+          "type": "string",
+          "default": "",
+          "description": "Additional instructions appended to Claude Code's system prompt."
+        },
+        "infinite-workspace.agent.allowedTools": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "Tools to auto-approve without prompting (e.g. ['Bash', 'Read']). Empty = use permissionMode."
+        },
+        "infinite-workspace.agent.disallowedTools": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "Tools to always deny (e.g. ['WebFetch']). Overrides allowedTools and permissionMode."
+        },
         "infinite-workspace.window.minWidth": {
           "type": "number",
           "default": 200,
@@ -302,6 +381,31 @@
             ]
           },
           "description": "Quick-launch file explorer path shortcuts."
+        },
+        "infinite-workspace.favorites.agentPaths": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string",
+                "description": "The working directory path for the agent."
+              },
+              "width": {
+                "type": "number",
+                "description": "Optional custom window width."
+              },
+              "height": {
+                "type": "number",
+                "description": "Optional custom window height."
+              }
+            },
+            "required": [
+              "value"
+            ]
+          },
+          "description": "Quick-launch agent working directory shortcuts."
         }
       }
     }
@@ -335,6 +439,7 @@
     "vite": "^6.0.0"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.89",
     "@base-ui/react": "^1.3.0",
     "@hookform/resolvers": "^5.2.2",
     "@xterm/addon-fit": "^0.11.0",

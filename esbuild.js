@@ -9,7 +9,7 @@ const extensionConfig = {
   platform: "node",
   format: "cjs",
   sourcemap: true,
-  external: ["vscode", "node-pty"],
+  external: ["vscode", "node-pty", "@anthropic-ai/claude-agent-sdk"],
   tsconfig: "./tsconfig.json",
 };
 

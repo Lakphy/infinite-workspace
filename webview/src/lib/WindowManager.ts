@@ -8,6 +8,7 @@ import { Canvas } from "./canvas";
 import { TerminalWindow, type TerminalConfig } from "./TerminalWindow";
 import { BrowserWindow } from "./BrowserWindow";
 import { FileExplorerWindow } from "./FileExplorerWindow";
+import { AgentWindow } from "./AgentWindow";
 import { SnapEngine } from "./snapGuides";
 import { setupDrag, ResizeHandleManager } from "./dragResize";
 
@@ -17,7 +18,7 @@ interface VsCodeApi {
   setState(state: unknown): void;
 }
 
-export type WindowType = "terminal" | "browser" | "fileExplorer";
+export type WindowType = "terminal" | "browser" | "fileExplorer" | "agent";
 
 export interface WindowInstance {
   id: string;
@@ -55,18 +56,22 @@ const WINDOW_ICONS: Record<WindowType, string> = {
     '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
   fileExplorer:
     '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>',
+  agent:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>',
 };
 
 const WINDOW_LABELS: Record<WindowType, string> = {
   terminal: "Terminal",
   browser: "Browser",
   fileExplorer: "Files",
+  agent: "Agent",
 };
 
 const WINDOW_DEFAULTS: Record<WindowType, { width: number; height: number }> = {
   terminal: { width: 650, height: 380 },
   browser: { width: 750, height: 520 },
   fileExplorer: { width: 700, height: 480 },
+  agent: { width: 700, height: 500 },
 };
 
 export type WindowDefaults = Record<WindowType, { width: number; height: number }>;
@@ -75,6 +80,7 @@ export class WindowManager {
   private windows = new Map<string, WindowInstance>();
   private browserWindows = new Map<string, BrowserWindow>();
   private terminalWindows = new Map<string, TerminalWindow>();
+  private agentWindows = new Map<string, AgentWindow>();
   private topZIndex = 1;
   private focusedWindowId: string | null = null;
   private canvas: Canvas;
@@ -170,6 +176,8 @@ export class WindowManager {
           state.extra = { url: bw.getUrl(), zoom: bw.getZoom() };
         }
       }
+      // Agent windows don't persist session state, just layout + path
+      // (sessions are re-created on restore)
       states.push(state);
     }
     const prev = this.vscode.getState() as Record<string, unknown> | null;
@@ -187,6 +195,9 @@ export class WindowManager {
           break;
         case "fileExplorer":
           this.createFileExplorerWindow(s.id, s.x, s.y, s.extra?.path);
+          break;
+        case "agent":
+          this.createAgentWindow(s.id, s.x, s.y, s.extra?.path);
           break;
       }
       const win = this.windows.get(s.id);
@@ -465,6 +476,44 @@ export class WindowManager {
       initialPath
     );
     win.onDestroy = () => fileExplorerWindow.destroy();
+
+    this.saveState();
+    return win.id;
+  }
+
+  createAgentWindow(
+    id?: string,
+    x?: number,
+    y?: number,
+    initialPath?: string,
+    width?: number,
+    height?: number
+  ): string {
+    const win = this.createWindowElement("agent", id, x, y, width, height);
+    const contentEl = win.element.querySelector(
+      ".window-content"
+    ) as HTMLDivElement;
+
+    const agentWindow = new AgentWindow(
+      contentEl,
+      win.id,
+      this.vscode,
+      initialPath
+    );
+    this.agentWindows.set(win.id, agentWindow);
+    win.onMessage = (msg) => {
+      // Agent messages are handled by the React component via window.addEventListener
+      // No additional routing needed here.
+    };
+    win.onDestroy = () => {
+      agentWindow.destroy();
+      this.agentWindows.delete(win.id);
+      // Tell extension host to clean up agent session
+      this.vscode.postMessage({
+        type: "agentDestroy",
+        windowId: win.id,
+      });
+    };
 
     this.saveState();
     return win.id;
