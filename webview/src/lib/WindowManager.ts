@@ -284,8 +284,31 @@ export class WindowManager {
 
     // Focus on click
     el.addEventListener("pointerdown", (e) => {
+      // Prevent browser auto-scroll on middle click
+      if (e.button === 1) {
+        const target = e.target as HTMLElement;
+        const titlebar = el.querySelector(".window-titlebar") as HTMLElement;
+        const overlay = el.querySelector(".window-focus-overlay") as HTMLElement;
+        if (titlebar?.contains(target) || target === overlay || target === el) {
+          e.preventDefault();
+        }
+      }
       e.stopPropagation();
       this.focusWindow(windowId);
+    });
+
+    // Middle click to close window
+    el.addEventListener("auxclick", (e) => {
+      if (e.button === 1) {
+        const target = e.target as HTMLElement;
+        const titlebar = el.querySelector(".window-titlebar") as HTMLElement;
+        const overlay = el.querySelector(".window-focus-overlay") as HTMLElement;
+        if (titlebar?.contains(target) || target === overlay || target === el) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.destroyWindow(windowId);
+        }
+      }
     });
 
     // Stop propagation inside content area

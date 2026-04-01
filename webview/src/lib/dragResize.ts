@@ -84,6 +84,7 @@ export function setupDrag(
 
   const makePointerDown = (handle: HTMLElement) => (e: PointerEvent) => {
     if ((e.target as HTMLElement).closest(".window-close")) return;
+    if (e.button !== 0) return; // Only allow dragging with primary (left) mouse button
     e.preventDefault();
     e.stopPropagation();
     onDragStart?.();
