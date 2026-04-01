@@ -219,21 +219,65 @@ html, body, #root {
     0 4px 16px oklch(0 0 0 / 40%);
 }
 
-/* Resize handle */
+/* ── Resize handles (external, live in viewport) ── */
 .window-resize-handle {
   position: absolute;
-  bottom: 0;
-  right: 0;
   width: 20px;
   height: 20px;
-  cursor: nwse-resize;
-  z-index: 1;
+  z-index: 9998;
   opacity: 0;
-  transition: opacity 0.15s ease;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
 }
 
-.workspace-window:hover .window-resize-handle {
+.window-resize-handle.visible {
   opacity: 1;
+  pointer-events: auto;
+}
+
+/* Per-corner cursor and transform-origin (anchor for zoom scaling) */
+.window-resize-handle[data-corner="tl"] { cursor: nwse-resize; transform-origin: 100% 100%; }
+.window-resize-handle[data-corner="tr"] { cursor: nesw-resize; transform-origin: 0% 100%; }
+.window-resize-handle[data-corner="bl"] { cursor: nesw-resize; transform-origin: 100% 0%; }
+.window-resize-handle[data-corner="br"] { cursor: nwse-resize; transform-origin: 0% 0%; }
+
+/* Rounded corner bracket — matches window border-radius (rounded-lg = 10px) */
+.window-resize-handle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-style: solid;
+  border-color: oklch(0.85 0 0 / 60%);
+  transition: border-color 0.15s ease, filter 0.15s ease;
+}
+
+/* ┌ top-left */
+.window-resize-handle[data-corner="tl"]::after {
+  border-width: 2px 0 0 2px;
+  border-radius: 10px 0 0 0;
+}
+
+/* ┐ top-right */
+.window-resize-handle[data-corner="tr"]::after {
+  border-width: 2px 2px 0 0;
+  border-radius: 0 10px 0 0;
+}
+
+/* └ bottom-left */
+.window-resize-handle[data-corner="bl"]::after {
+  border-width: 0 0 2px 2px;
+  border-radius: 0 0 0 10px;
+}
+
+/* ┘ bottom-right */
+.window-resize-handle[data-corner="br"]::after {
+  border-width: 0 2px 2px 0;
+  border-radius: 0 0 10px 0;
+}
+
+.window-resize-handle:hover::after {
+  border-color: oklch(1 0 0 / 85%);
+  filter: drop-shadow(0 0 4px oklch(1 0 0 / 30%));
 }
 
 /* Focus overlay — blocks interaction on unfocused windows, allows drag */
@@ -247,17 +291,6 @@ html, body, #root {
 
 .workspace-window.window-focused .window-focus-overlay {
   pointer-events: none;
-}
-
-.window-resize-handle::after {
-  content: "";
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  width: 6px;
-  height: 6px;
-  border-right: 1.5px solid oklch(0.55 0 0);
-  border-bottom: 1.5px solid oklch(0.55 0 0);
 }
 
 /* Terminal container */

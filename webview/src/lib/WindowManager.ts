@@ -9,7 +9,7 @@ import { TerminalWindow } from "./TerminalWindow";
 import { BrowserWindow } from "./BrowserWindow";
 import { FileExplorerWindow } from "./FileExplorerWindow";
 import { SnapEngine } from "./snapGuides";
-import { setupDrag, setupResize } from "./dragResize";
+import { setupDrag, ResizeHandleManager } from "./dragResize";
 
 interface VsCodeApi {
   postMessage(msg: unknown): void;
@@ -79,12 +79,19 @@ export class WindowManager {
   private canvas: Canvas;
   private vscode: VsCodeApi;
   private snapEngine: SnapEngine;
+  private resizeHandleManager: ResizeHandleManager;
   private windowDefaults: WindowDefaults = { ...WINDOW_DEFAULTS };
 
   constructor(canvas: Canvas, vscode: VsCodeApi) {
     this.canvas = canvas;
     this.vscode = vscode;
     this.snapEngine = new SnapEngine(canvas.viewport);
+    this.resizeHandleManager = new ResizeHandleManager(
+      canvas,
+      () => this.getDraggableWindows(),
+      () => this.saveState(),
+      (winId) => this.focusWindow(winId)
+    );
   }
 
   getSnapEngine(): SnapEngine {
@@ -197,6 +204,11 @@ export class WindowManager {
     return rects;
   }
 
+  /** Get all windows as DraggableWindow (for ResizeHandleManager) */
+  private getDraggableWindows() {
+    return Array.from(this.windows.values());
+  }
+
   // --- Window creation (generic) ---
 
   private createWindowElement(
@@ -247,7 +259,6 @@ export class WindowManager {
       <div class="window-content flex-1 overflow-hidden relative flex flex-col">
         <div class="window-focus-overlay"></div>
       </div>
-      <div class="window-resize-handle"></div>
     `;
 
     this.canvas.layer.appendChild(el);
@@ -295,7 +306,6 @@ export class WindowManager {
       (excludeId) => this.getOtherRects(excludeId),
       () => this.focusWindow(windowId)
     );
-    setupResize(win, this.canvas, () => this.saveState());
 
     // Close button
     const closeBtn = el.querySelector(".window-close") as HTMLButtonElement;
