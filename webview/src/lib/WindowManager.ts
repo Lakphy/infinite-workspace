@@ -244,9 +244,10 @@ export class WindowManager {
           <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
-      <div class="window-content flex-1 overflow-hidden relative flex flex-col"></div>
+      <div class="window-content flex-1 overflow-hidden relative flex flex-col">
+        <div class="window-focus-overlay"></div>
+      </div>
       <div class="window-resize-handle"></div>
-      <div class="window-focus-overlay"></div>
     `;
 
     this.canvas.layer.appendChild(el);
@@ -283,20 +284,16 @@ export class WindowManager {
       passive: false,
     });
 
-    // Focus overlay for unfocused windows
-    const overlay = el.querySelector(".window-focus-overlay") as HTMLDivElement;
-    overlay.addEventListener("pointerdown", (e) => {
-      e.stopPropagation();
-      this.focusWindow(windowId);
-    });
-
     // Wire up drag (with snap) and resize
+    // Drag is set up on both titlebar and focus overlay, so unfocused
+    // windows can be dragged from anywhere.
     setupDrag(
       win,
       this.canvas,
       () => this.saveState(),
       this.snapEngine,
-      (excludeId) => this.getOtherRects(excludeId)
+      (excludeId) => this.getOtherRects(excludeId),
+      () => this.focusWindow(windowId)
     );
     setupResize(win, this.canvas, () => this.saveState());
 

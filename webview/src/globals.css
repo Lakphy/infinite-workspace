@@ -236,12 +236,13 @@ html, body, #root {
   opacity: 1;
 }
 
-/* Focus overlay — blocks interaction on unfocused windows */
+/* Focus overlay — blocks interaction on unfocused windows, allows drag */
 .window-focus-overlay {
   position: absolute;
   inset: 0;
   z-index: 10;
   border-radius: inherit;
+  cursor: grab;
 }
 
 .workspace-window.window-focused .window-focus-overlay {

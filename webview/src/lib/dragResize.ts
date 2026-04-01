@@ -18,7 +18,8 @@ export interface DraggableWindow {
 }
 
 /**
- * Set up drag-to-move on a window's titlebar.
+ * Set up drag-to-move on a window's titlebar and focus overlay.
+ * The overlay covers unfocused windows, allowing drag from anywhere.
  * Integrates with SnapEngine for alignment guides during drag.
  */
 export function setupDrag(
@@ -26,30 +27,21 @@ export function setupDrag(
   canvas: Canvas,
   saveState: () => void,
   snapEngine: SnapEngine,
-  getOtherRects: (excludeId: string) => { x: number; y: number; width: number; height: number }[]
+  getOtherRects: (excludeId: string) => { x: number; y: number; width: number; height: number }[],
+  onDragStart?: () => void
 ) {
   const titlebar = win.element.querySelector(
     ".window-titlebar"
   ) as HTMLDivElement;
+  const overlay = win.element.querySelector(
+    ".window-focus-overlay"
+  ) as HTMLDivElement | null;
 
   let startX = 0;
   let startY = 0;
   let startWinX = 0;
   let startWinY = 0;
-
-  const onPointerDown = (e: PointerEvent) => {
-    if ((e.target as HTMLElement).closest(".window-close")) return;
-    e.preventDefault();
-    e.stopPropagation();
-    startX = e.clientX;
-    startY = e.clientY;
-    startWinX = win.x;
-    startWinY = win.y;
-    win.element.classList.add("dragging");
-    titlebar.setPointerCapture(e.pointerId);
-    titlebar.addEventListener("pointermove", onPointerMove);
-    titlebar.addEventListener("pointerup", onPointerUp);
-  };
+  let activeHandle: HTMLElement | null = null;
 
   const onPointerMove = (e: PointerEvent) => {
     const scale = canvas.getScale();
@@ -74,15 +66,37 @@ export function setupDrag(
   };
 
   const onPointerUp = (e: PointerEvent) => {
-    titlebar.releasePointerCapture(e.pointerId);
-    titlebar.removeEventListener("pointermove", onPointerMove);
-    titlebar.removeEventListener("pointerup", onPointerUp);
+    if (activeHandle) {
+      activeHandle.releasePointerCapture(e.pointerId);
+      activeHandle.removeEventListener("pointermove", onPointerMove);
+      activeHandle.removeEventListener("pointerup", onPointerUp);
+      activeHandle = null;
+    }
     win.element.classList.remove("dragging");
     snapEngine.clearGuides();
     saveState();
   };
 
-  titlebar.addEventListener("pointerdown", onPointerDown);
+  const makePointerDown = (handle: HTMLElement) => (e: PointerEvent) => {
+    if ((e.target as HTMLElement).closest(".window-close")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onDragStart?.();
+    startX = e.clientX;
+    startY = e.clientY;
+    startWinX = win.x;
+    startWinY = win.y;
+    win.element.classList.add("dragging");
+    activeHandle = handle;
+    handle.setPointerCapture(e.pointerId);
+    handle.addEventListener("pointermove", onPointerMove);
+    handle.addEventListener("pointerup", onPointerUp);
+  };
+
+  titlebar.addEventListener("pointerdown", makePointerDown(titlebar));
+  if (overlay) {
+    overlay.addEventListener("pointerdown", makePointerDown(overlay));
+  }
 }
 
 /**
