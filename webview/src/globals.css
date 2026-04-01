@@ -206,7 +206,7 @@ html, body, #root {
 /* Active window glow */
 .workspace-window.window-focused {
   box-shadow:
-    0 0 0 1px oklch(0.55 0.15 250 / 40%),
+    0 0 0 1px oklch(1 0 0 / 40%),
     0 8px 32px oklch(0 0 0 / 50%),
     0 2px 8px oklch(0 0 0 / 30%);
 }
