@@ -314,7 +314,11 @@
     "watch:ext": "node esbuild.js --watch",
     "watch:webview": "vite build --watch",
     "postinstall": "node -e \"const fs=require('fs'),p=require('path'),o=require('os'); if(o.platform()!=='win32'){const h=p.resolve(__dirname,'node_modules/node-pty/prebuilds',o.platform()+'-'+o.arch(),'spawn-helper'); if(fs.existsSync(h)){fs.chmodSync(h,0o755);console.log('Fixed spawn-helper permissions')}}\"",
-    "vscode:prepublish": "npm run build"
+    "vscode:prepublish": "npm run build",
+    "package": "npx @vscode/vsce package",
+    "publish:vscode": "npx @vscode/vsce publish",
+    "publish:ovsx": "npx ovsx publish",
+    "publish:all": "npm run publish:vscode && npm run publish:ovsx"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.0",
