@@ -66,15 +66,31 @@ export class PtyManager {
     }
   }
 
+  /**
+   * Launch interactive shells on Unix so user rc files load (e.g. nvm in .zshrc/.bashrc).
+   * Without this, VS Code's extension host environment may not include user-managed Node PATH.
+   */
+  private getShellArgs(shellPath: string): string[] {
+    if (os.platform() === "win32") return [];
+
+    const shellName = path.basename(shellPath).toLowerCase();
+    if (shellName === "zsh" || shellName === "bash" || shellName === "fish") {
+      return ["-i"];
+    }
+
+    return [];
+  }
+
   create(windowId: string): void {
     const shell =
       this.shellOverride ||
       (os.platform() === "win32"
         ? "powershell.exe"
         : process.env.SHELL || "/bin/zsh");
+    const shellArgs = this.getShellArgs(shell);
 
     try {
-      const ptyProcess = pty.spawn(shell, [], {
+      const ptyProcess = pty.spawn(shell, shellArgs, {
         name: "xterm-256color",
         cols: 80,
         rows: 24,
